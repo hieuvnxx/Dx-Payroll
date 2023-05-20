@@ -6,6 +6,11 @@
             "Dx\\Payroll\\": "src/"
         }
     },
+    "autoload-dev": {
+        "psr-4": {
+            "Dx\\Payroll\\": "src/"
+        }
+    },
     "license": "MIT",
     "authors": [
         {

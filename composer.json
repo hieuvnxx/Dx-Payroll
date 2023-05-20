@@ -1,0 +1,20 @@
+{
+    "name": "dxsmartosc/payroll",
+    "description": "This package provide for payroll module",
+    "autoload": {
+        "psr-4": {
+            "Dx\\Payroll\\": "src/"
+        }
+    },
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "hieuvnxx",
+            "email": "hieuvnxx@gmail.com"
+        }
+    ],
+    "require": {
+        "php": "^8.0"
+    },
+    "minimum-stability": "dev"
+}

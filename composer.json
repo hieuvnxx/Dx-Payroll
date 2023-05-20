@@ -3,12 +3,12 @@
     "description": "This package provide for payroll module",
     "autoload": {
         "psr-4": {
-            "Dx\\Payroll\\": "src/"
+            "Dx\\Payroll\\": "src"
         }
     },
     "autoload-dev": {
         "psr-4": {
-            "Dx\\Payroll\\": "src/"
+            "Dx\\Payroll\\Tests": "tests"
         }
     },
     "license": "MIT",
@@ -20,6 +20,5 @@
     ],
     "require": {
         "php": "^8.0"
-    },
-    "minimum-stability": "dev"
+    }
 }

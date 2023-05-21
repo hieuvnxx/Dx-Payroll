@@ -2,7 +2,7 @@
 
 ## About Dx SmartOSC Payroll Package
 
-Dx SmartOSC Payroll Package is accessible, powerful, and provides library for specify HRM Payroll Vietnam locale (Asian)
+Dx SmartOSC Payroll Package is accessible, powerful, and provides library for specify HRM Payroll Vietnam country (Asian)
 
 ## Prerequirements
 

@@ -1,4 +1,4 @@
-<p align="center"><a href="https://dx.smartosc.com/" target="_blank"><img src="https://dx.smartosc.com/wp-content/uploads/2022/08/logo-white-page-1.png" width="400" alt="Laravel Logo"></a></p>
+<p align="center"><a href="https://dx.smartosc.com/" target="_blank"><img src="https://dx.smartosc.com/wp-content/uploads/2022/08/logo-color-page-1.png" width="400" alt="Laravel Logo"></a></p>
 
 ## About Dx SmartOSC Payroll Package
 

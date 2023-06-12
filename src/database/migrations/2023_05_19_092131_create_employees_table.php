@@ -14,15 +14,18 @@ return new class extends Migration
      */
     public function up()
     {
-        Schema::create(DxServiceProvider::DX_PREFIX_TABLE.'_employees', function (Blueprint $table) {
+        Schema::create(DxServiceProvider::DX_PREFIX_TABLE.'employees', function (Blueprint $table) {
             $table->id();
             $table->char('code', 25)->unique();
+            $table->string('zoho_id', 55)->nullable();
             $table->string('first_name', 55)->nullable();
             $table->string('last_name', 55)->nullable();
             $table->string('email', 75)->nullable();
             $table->string('phone', 75)->nullable();
             $table->string('work_phone', 75)->nullable();
             $table->dateTime('dob')->nullable();
+            $table->string('status', 55)->nullable();
+            $table->string('status_payroll', 55)->nullable();
             $table->timestamps();
         });
     }
@@ -34,6 +37,6 @@ return new class extends Migration
      */
     public function down()
     {
-        Schema::dropIfExists(DxServiceProvider::DX_PREFIX_TABLE.'_employees');
+        Schema::dropIfExists(DxServiceProvider::DX_PREFIX_TABLE.'employees');
     }
 };

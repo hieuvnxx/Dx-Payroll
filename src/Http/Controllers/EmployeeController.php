@@ -2,30 +2,33 @@
 
 namespace Dx\Payroll\Http\Controllers;
 
-use Illuminate\Http\Request;
-use App\Http\Controllers\Controller as Controller;
+use Dx\Payroll\Repositories\EmployeeInterface;
 
 
-class EmployeeController extends Controller
+class EmployeeController
 {
+
+    protected $repoEmployee;
+
+    public function __construct(EmployeeInterface $repoEmployee)
+    {
+        $this->repoEmployee = $repoEmployee;
+    }
     /**
      * success response method.
      *
      * @return \Illuminate\Http\Response
      */
-    public function index()
+    public function getAllEmployee($data = '')
     {
-        return "test index";
+        $id = $data['code'] ?? '';
+        return $this->repoEmployee->getAllEmployee($id)->sortBy('id')->sortBy('offerSalary.from_date');
     }
 
-
-    /**
-     * return error response.
-     *
-     * @return \Illuminate\Http\Response
-     */
-    public function store()
+    public function getEmployeeByCode($code = '')
     {
-    	return "test store";
+        return $this->repoEmployee->getEmployeeByCode($code)->sortBy('id')->sortBy('offerSalary.from_date');
+
     }
+
 }

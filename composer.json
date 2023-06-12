@@ -4,7 +4,11 @@
     "autoload": {
         "psr-4": {
             "Dx\\Payroll\\": "src"
-        }
+        },
+        "files": [
+            "vendor/dxsmartosc/payroll/src/Helpers/ZohoToken.php",
+            "vendor/dxsmartosc/payroll/src/Helpers/getAPI.php"
+        ]
     },
     "autoload-dev": {
         "psr-4": {
@@ -22,7 +26,10 @@
         "php": "^8.0"
     },
     "require-dev": {
-        "phpunit/phpunit": "^9.5"
+        "phpunit/phpunit": "^9.5",
+        "prettus/l5-repository": "^2.9",
+        "predis/predis": "^2.1",
+        "laravel/horizon": "^5.16"
     },
     "extra": {
         "branch-alias": {

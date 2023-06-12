@@ -6,8 +6,8 @@
             "Dx\\Payroll\\": "src"
         },
         "files": [
-            "vendor/dxsmartosc/payroll/src/Helpers/ZohoToken.php",
-            "vendor/dxsmartosc/payroll/src/Helpers/getAPI.php"
+            "src/Helpers/ZohoToken.php",
+            "src/Helpers/getAPI.php"
         ]
     },
     "autoload-dev": {

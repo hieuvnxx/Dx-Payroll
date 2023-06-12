@@ -19,6 +19,7 @@ class DxServiceProvider extends ServiceProvider
      */
     public function register()
     {
+
     }
 
     /**
@@ -30,8 +31,6 @@ class DxServiceProvider extends ServiceProvider
     {
         $this->loadCommands();
         $this->app->singleton(ExceptionHandler::class,DxHandler::class);
-        $this->app->singleton(\Dx\Payroll\Helpers\ZohoToken::class,\Dx\Payroll\Helpers\ZohoToken::class);
-        $this->app->singleton(\Dx\Payroll\Helpers\getAPI::class,\Dx\Payroll\Helpers\getAPI::class);
         $this->app->bind(\Dx\Payroll\Repositories\RefreshTokenInterface::class,\Dx\Payroll\Repositories\Eloquent\RefreshTokenRepository::class);
         $this->app->bind(\Dx\Payroll\Repositories\ZohoFormInterface::class,\Dx\Payroll\Repositories\Eloquent\ZohoFormRepository::class);
         $this->app->bind(\Dx\Payroll\Repositories\EmployeeInterface::class,\Dx\Payroll\Repositories\Eloquent\EmployeeRepository::class);

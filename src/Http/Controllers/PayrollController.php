@@ -10,7 +10,6 @@ use Dx\Payroll\Http\Controllers\EmployeeController;
 use Dx\Payroll\Http\Controllers\BaseController;
 use Dx\Payroll\Jobs\MonthlyJob;
 use Dx\Payroll\Jobs\PayslipJob;
-use Dx\Payroll\Helpers\getAPI;
 
 class PayrollController extends BaseController
 {

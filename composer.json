@@ -4,11 +4,7 @@
     "autoload": {
         "psr-4": {
             "Dx\\Payroll\\": "src"
-        },
-        "files": [
-            "src/Helpers/ZohoToken.php",
-            "src/Helpers/getAPI.php"
-        ]
+        }
     },
     "autoload-dev": {
         "psr-4": {

@@ -16,7 +16,7 @@ interface EmployeeInterface extends RepositoryInterface
      * @param $id
      * @return mixed
      */
-    public function getAllEmployee($id);
+    public function getEmployee($id);
 
     /**
      * Get all/one All Info of employee

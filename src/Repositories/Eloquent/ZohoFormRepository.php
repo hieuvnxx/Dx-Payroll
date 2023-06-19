@@ -14,7 +14,6 @@ use Prettus\Repository\Criteria\RequestCriteria;
  */
 class ZohoFormRepository extends BaseRepository implements ZohoFormInterface
 {
-
     /**
      * Specify Model class name
      *
@@ -59,6 +58,5 @@ class ZohoFormRepository extends BaseRepository implements ZohoFormInterface
         }
         return $response;
     }
-
 
 }

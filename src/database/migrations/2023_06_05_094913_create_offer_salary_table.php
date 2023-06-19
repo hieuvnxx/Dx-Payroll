@@ -18,12 +18,13 @@ return new class extends Migration
             $table->id();
             $table->char('code', 25);
             $table->string('zoho_id', 55)->nullable();
+            $table->string('salary_type', 255)->nullable();
             $table->date('from_date')->nullable();
             $table->date('to_date')->nullable();
-            $table->string('amount', 55)->nullable();
-            $table->string('salary_rate', 55)->nullable();
+            $table->string('amount', 255)->nullable();
+            $table->string('salary_rate', 255)->nullable();
             $table->string('notes', 255)->nullable();
-            $table->string('status', 25)->nullable();
+            $table->string('status', 255)->nullable();
             $table->timestamps();
         });
     }

@@ -4,14 +4,13 @@ namespace Dx\Payroll\Console\Commands;
 
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
-use Dx\Payroll\Helpers\ZohoToken;
-use Dx\Payroll\Helpers\getAPI;
+use Dx\Payroll\Http\Controllers\ZohoController;
 use Dx\Payroll\Models\ZohoForm;
 use Dx\Payroll\Models\ZohoFormLabel;
+use Illuminate\Support\Facades\Log;
 
 class SyncZohoForm extends Command
 {
-
     protected $signature = 'dxpayroll:syncZohoForm';
 
     /**
@@ -29,7 +28,7 @@ class SyncZohoForm extends Command
      */
     public function handle()
     {
-        $arrForm = ZohoToken::callZoho('forms', [], false);
+        $arrForm = app(ZohoController::class)->callZoho('forms', [], false);
         if(!empty($arrForm['response']['result'])){
             foreach ($arrForm['response']['result'] as $form) {
                 $idForm = ZohoForm::updateOrCreate(
@@ -38,7 +37,8 @@ class SyncZohoForm extends Command
                         'form_slug' => $form['displayName'],
                         'status' => $form["isVisible"] ? 1 : 0]
                 );
-                $arrComp = getAPI::getSectionForm('forms/' . $form['formLinkName'] . '/components', 2, false);
+                $arrComp = app(ZohoController::class)->getSectionForm('forms/employee/components', 2, false);
+                dd(Log::info('ád', $arrComp));
                 if (!empty($arrComp['response']['result'])) {
                     foreach ($arrComp['response']['result'] as $data) {
                         if (isset($data['comptype']) && $data['comptype'] == 'AutoNumber') {

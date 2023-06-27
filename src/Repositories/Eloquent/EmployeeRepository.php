@@ -25,20 +25,18 @@ class EmployeeRepository extends BaseRepository implements EmployeeInterface
         return Employee::class;
     }
 
-    public function getAllEmployee($id = '')
+    public function getEmployee($code = '')
     {
-        if(empty($id)){
-            return Employee::with('offerSalary')->get();
+        if(empty($code)){
+            return $this->model->with('offerSalary')->get();
         }else{
-            return Employee::where('code', '=', $id)->with('offerSalary')->get();
+            return $this->model->where('code', $code)->with('offerSalary')->get();
         }
     }
 
     public function getEmployeeByCode($code = '')
     {
-        if(!empty($code)){
-            return Employee::where('code', '=', $code)->with('offerSalary')->get();
-        }
+        return $this->model->where('code', '=', $code)->with('offerSalary')->first();
     }
 
 }

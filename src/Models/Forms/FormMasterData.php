@@ -1,19 +1,21 @@
 <?php
 
-namespace Dx\Payroll\Models;
+namespace Dx\Payroll\Models\Forms;
 
 use Dx\Payroll\DxServiceProvider;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class RefreshToken extends Model
+class FormMasterData extends Model
 {
     use HasFactory;
 
-    protected $table = DxServiceProvider::DX_PREFIX_TABLE.'refresh_token';
+    protected $table = DxServiceProvider::DX_PREFIX_TABLE.'form_master_data';
 
     protected $fillable = [
-        'zoho_token', 'last_time', 'name'
+        'zoho_id',
+        'field_name',
+        'form_name'
     ];
 
     protected $hidden = [

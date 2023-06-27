@@ -3,7 +3,8 @@
 namespace Dx\Payroll\Http\Controllers;
 
 use Dx\Payroll\Repositories\EmployeeInterface;
-use Dx\Payroll\ZohoIntegrations\BaseZohoIntegration;
+use Dx\Payroll\ZohoIntegrations\ZohoIntegration;
+use Dx\Payroll\ZohoIntegrations\PeopleZohoIntegration;
 
 
 class EmployeeController
@@ -20,9 +21,8 @@ class EmployeeController
      *
      * @return \Illuminate\Http\Response
      */
-    public function getAllEmployee($data = '')
+    public function getEmployee($data = '')
     {
-        dd(app(PeopleZohoIntegration::class)->callZoho());
         $id = $data['code'] ?? '';
         return $this->repoEmployee->getAllEmployee($id)->sortBy('id')->sortBy('offerSalary.from_date');
     }

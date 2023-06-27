@@ -14,7 +14,6 @@ use Prettus\Repository\Criteria\RequestCriteria;
  */
 class ZohoFormRepository extends BaseRepository implements ZohoFormInterface
 {
-
     /**
      * Specify Model class name
      *
@@ -49,16 +48,14 @@ class ZohoFormRepository extends BaseRepository implements ZohoFormInterface
                 $response[$value->form_name]['insertRecord'] = 'forms/json/' . $value->form_name . '/insertRecord';
                 $response[$value->form_name]['updateRecord'] = 'forms/json/' . $value->form_name . '/updateRecord';
                 $response[$value->form_name]['deleteRecords'] = $value->form_name;
-                if(!empty($value->labelForm)){
-                    foreach ($value->labelForm as $labelForm){
-                        $response[$value->form_name][$labelForm->slug . '_label'] = $labelForm->label;
-                        $response[$value->form_name][$labelForm->slug . '_key'] = $labelForm->key;
+                if(!empty($value->formSection)){
+                    foreach ($value->formSection as $sections){
+                        $response[$value->form_name][$sections->sections_id] = $sections->sections_id;
                     }
                 }
             }
         }
         return $response;
     }
-
 
 }

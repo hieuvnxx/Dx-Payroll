@@ -2,16 +2,17 @@
 
 namespace Dx\Payroll\Console\Commands;
 
+use Dx\Payroll\Models\Attributes;
+use Dx\Payroll\Models\Sections;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
-use Dx\Payroll\Helpers\ZohoToken;
-use Dx\Payroll\Helpers\getAPI;
+use Dx\Payroll\Http\Controllers\ZohoController;
 use Dx\Payroll\Models\ZohoForm;
 use Dx\Payroll\Models\ZohoFormLabel;
+use Illuminate\Support\Facades\Log;
 
 class SyncZohoForm extends Command
 {
-
     protected $signature = 'dxpayroll:syncZohoForm';
 
     /**
@@ -29,42 +30,57 @@ class SyncZohoForm extends Command
      */
     public function handle()
     {
-        $arrForm = ZohoToken::callZoho('forms', [], false);
+        $zoho = app(ZohoController::class);
+        $arrForm = $zoho->callZoho('forms', [], false);
         if(!empty($arrForm['response']['result'])){
             foreach ($arrForm['response']['result'] as $form) {
                 $idForm = ZohoForm::updateOrCreate(
-                    ['form_name' => $form['formLinkName']],
-                    ['zoho_id' => $form['componentId'],
+                    [
+                        'form_name' => $form['formLinkName']
+                    ],[
+                        'zoho_id' => $form['componentId'],
                         'form_slug' => $form['displayName'],
-                        'status' => $form["isVisible"] ? 1 : 0]
+                        'status' => $form["isVisible"] ? 1 : 0
+                    ]
                 );
-                $arrComp = getAPI::getSectionForm('forms/' . $form['formLinkName'] . '/components', 2, false);
+                $arrComp = $zoho->getSectionForm('forms/'.$form['formLinkName'].'/components', 2, false);
                 if (!empty($arrComp['response']['result'])) {
                     foreach ($arrComp['response']['result'] as $data) {
-                        if (isset($data['comptype']) && $data['comptype'] == 'AutoNumber') {
-                            ZohoFormLabel::updateOrCreate(
-                                ['form_name' => $form['displayName'], 'key' => $data['labelname']],
-                                ['form_id' => $idForm->id,
-                                    'form_slug' => $form['formLinkName'],
-                                    'label' => str_replace('_', ' ', $data['displayname']),
-                                    'slug' => 'auto_number',]
+                        if(!isset($data['tabularSections'])){
+                            Attributes::updateOrCreate(
+                                [
+                                    'form_id' => $idForm->id,
+                                    'attributes_label' => $data['labelname']
+                                ],[
+                                    'attributes_name' => $data['displayname'],
+                                    'type' => $data['comptype'],
+                                    'section_id' => 0,
+                                ]
                             );
-                        } else {
-                            foreach ($data as $key => $item) {
-                                if ($key == 'tabularSections' && !empty($item)) {
-                                    foreach ($item as $arr) {
-                                        if (!empty($arr)) {
-                                            foreach ($arr as $k => $val) {
-                                                if ($k !== "sectionId") {
-                                                    ZohoFormLabel::updateOrCreate(
-                                                        ['form_name' => $form['displayName'], 'key' => $k],
-                                                        ['form_id' => $idForm->id,
-                                                            'form_slug' => $form['formLinkName'],
-                                                            'label' => str_replace('_', ' ', $k),
-                                                            'slug' => $k]
-                                                    );
-                                                }
-                                            }
+                        }else{
+                            foreach ($data['tabularSections'] as $sectionData){
+                                foreach ($sectionData as $key => $dataSection){
+                                    if($key != 'sectionId'){
+                                        $sectionID = Sections::updateOrCreate(
+                                            [
+                                                'form_id' => $idForm->id,
+                                                'sections_label' => $key,
+                                            ],[
+                                                'sections_name' => ucwords(str_replace('_', ' ', $key)),
+                                                'sections_id' => $sectionData['sectionId'],
+                                            ]
+                                        );
+                                        foreach ($dataSection as $sectionAttribute){
+                                            Attributes::updateOrCreate(
+                                                [
+                                                    'form_id' => $idForm->id,
+                                                    'attributes_label' => $sectionAttribute['labelname'],
+                                                    'section_id' => $sectionID->id
+                                                ],[
+                                                    'attributes_name' => $sectionAttribute['displayname'],
+                                                    'type' => $sectionAttribute['comptype'],
+                                                ]
+                                            );
                                         }
                                     }
                                 }

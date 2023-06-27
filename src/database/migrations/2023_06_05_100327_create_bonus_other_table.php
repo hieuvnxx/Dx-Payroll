@@ -18,12 +18,12 @@ return new class extends Migration
             $table->id();
             $table->char('code', 25);
             $table->string('zoho_id', 55)->nullable();
-            $table->string('type', 55)->nullable();
+            $table->string('category', 255)->nullable();
             $table->dateTime('date')->nullable();
-            $table->string('amount', 55)->nullable();
-            $table->string('notes', 255)->nullable();
-            $table->string('tax', 25)->nullable();
-            $table->string('status', 25)->nullable();
+            $table->string('amount', 255)->nullable();
+            $table->string('description', 255)->nullable();
+            $table->string('tax', 255)->nullable();
+            $table->string('status', 255)->nullable();
             $table->timestamps();
         });
     }

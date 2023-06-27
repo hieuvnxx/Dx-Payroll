@@ -1,19 +1,19 @@
 <?php
 
-namespace Dx\Payroll\Models;
+namespace Dx\Payroll\Models\Employee;
 
 use Dx\Payroll\DxServiceProvider;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class RefreshToken extends Model
+class OfferSalary extends Model
 {
     use HasFactory;
 
-    protected $table = DxServiceProvider::DX_PREFIX_TABLE.'refresh_token';
+    protected $table = DxServiceProvider::DX_PREFIX_TABLE.'offer_salary';
 
     protected $fillable = [
-        'zoho_token', 'last_time', 'name'
+
     ];
 
     protected $hidden = [

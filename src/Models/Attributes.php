@@ -26,8 +26,8 @@ class Attributes extends Model
 
     ];
 
-    public function labelForm(){
-        return $this->hasMany(ZohoFormLabel::class,'form_id', 'id');
-    }
+//    public function labelForm(){
+//        return $this->hasMany(ZohoFormLabel::class,'form_id', 'id');
+//    }
 
 }

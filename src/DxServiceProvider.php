@@ -36,6 +36,7 @@ class DxServiceProvider extends ServiceProvider
         $this->app->bind(\Dx\Payroll\Repositories\EmployeeInterface::class,\Dx\Payroll\Repositories\Eloquent\EmployeeRepository::class);
         $this->app->bind(\Dx\Payroll\Repositories\PayrollSettingsInterface::class,\Dx\Payroll\Repositories\Eloquent\PayrollSettingsRepository::class);
         $this->app->bind(\Dx\Payroll\Repositories\RedisConfigFormInterface::class,\Dx\Payroll\Repositories\Eloquent\RedisConfigFormRepository::class);
+        $this->app->bind(\Dx\Payroll\Repositories\ValuesInterface::class,\Dx\Payroll\Repositories\Eloquent\ValuesRepository::class);
         $this->loadRoutesFrom(__DIR__.'/routes/web.php');
         $this->loadMigrationsFrom(__DIR__.'/database/migrations');
         $this->mergeConfigFrom(__DIR__.'/config/logging.php','logging.channels');

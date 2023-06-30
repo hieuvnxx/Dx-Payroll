@@ -19,6 +19,7 @@ class Values extends Model
         'attribute_id',
         'section_id',
         'zoho_id',
+        'row_id',
         'value'
     ];
 

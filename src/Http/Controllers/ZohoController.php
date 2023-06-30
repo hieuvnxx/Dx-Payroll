@@ -213,9 +213,12 @@ class ZohoController extends BaseController
         return $response;
     }
 
-    public function deleteRecords($form = '', $body = [], $convert = true)
+    public function deleteRecords($form = '', $id = '', $convert = true)
     {
-        $response = $this->callZoho($form, $body, $convert);
+        $url    = 'deleteRecords';
+        $body['recordIds'] = $id;
+        $body['formLinkName'] = $form;
+        $response = $this->callZoho($url, $body);
         return $response;
     }
     /**

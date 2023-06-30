@@ -20,6 +20,7 @@ return new class extends Migration
             $table->string('attribute_id', 255)->nullable();
             $table->string('section_id', 255)->nullable();
             $table->string('zoho_id', 255)->nullable();
+            $table->string('row_id', 255)->nullable();
             $table->string('value', 255)->nullable();
             $table->timestamps();
         });

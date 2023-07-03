@@ -14,5 +14,5 @@ interface RedisConfigFormInterface
      * @param
      * @return mixed
      */
-    public function getConfigByToken();
+    public function getConfig();
 }

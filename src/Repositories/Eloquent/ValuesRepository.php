@@ -2,7 +2,7 @@
 
 namespace Dx\Payroll\Repositories\Eloquent;
 
-use Dx\Payroll\Models\Values;
+use Dx\Payroll\Models\ZohoRecordValue;
 use Dx\Payroll\Repositories\ValuesInterface;
 use PhpParser\Node\Expr\AssignOp\Mod;
 use Prettus\Repository\Eloquent\BaseRepository;
@@ -22,7 +22,7 @@ class ValuesRepository extends BaseRepository implements ValuesInterface
      */
     public function model()
     {
-        return Values::class;
+        return ZohoRecordValue::class;
     }
 
     public function deleteRecords($formName, $ZohoID)

@@ -4,8 +4,8 @@ namespace Dx\Payroll\Http\Controllers;
 
 use App\Constants\BaseConstant;
 use Carbon\Carbon;
-use Dx\Payroll\Models\Sections;
-use Dx\Payroll\Models\Values;
+use Dx\Payroll\Models\ZohoSection;
+use Dx\Payroll\Models\ZohoRecordValue;
 use Dx\Payroll\Models\ZohoForm;
 use Dx\Payroll\Repositories\Eloquent\SectionsRepository;
 use Dx\Payroll\Repositories\ValuesInterface;
@@ -90,7 +90,7 @@ class SyncDataController
                                             $valueIs = $value;
                                         }
                                         try{
-                                            Values::updateOrCreate(
+                                            ZohoRecordValue::updateOrCreate(
                                                 [
                                                     'form_id' => $form->id,
                                                     'attribute_id' => $attribute->id,
@@ -128,7 +128,7 @@ class SyncDataController
                                         try {
                                             foreach ($arrAttributesForm as $ky => $arrAttribute){
                                                 if($arrAttribute == $arrAttributes){
-                                                    $sectionID = Sections::updateOrCreate(
+                                                    $sectionID = ZohoSection::updateOrCreate(
                                                         [
                                                             'id' => $ky,
                                                             'form_id' => $form->id
@@ -143,7 +143,7 @@ class SyncDataController
                                                 foreach ($tabularValue as $keys => $vals) {
                                                     foreach ($form->attribute as $attribute){
                                                         if($keys == $attribute->attributes_label){
-                                                            Values::updateOrCreate(
+                                                            ZohoRecordValue::updateOrCreate(
                                                                 [
                                                                     'form_id' => $form->id,
                                                                     'attribute_id' => $attribute->id,

@@ -2,7 +2,7 @@
 
 namespace Dx\Payroll\Repositories\Eloquent;
 
-use Dx\Payroll\Models\Sections;
+use Dx\Payroll\Models\ZohoSection;
 use Dx\Payroll\Repositories\RefreshTokenInterface;
 use Prettus\Repository\Eloquent\BaseRepository;
 use Prettus\Repository\Criteria\RequestCriteria;
@@ -22,7 +22,7 @@ class SectionsRepository extends BaseRepository implements RefreshTokenInterface
      */
     public function model()
     {
-        return Sections::class;
+        return ZohoSection::class;
     }
 
 }

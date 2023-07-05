@@ -6,23 +6,14 @@ use Dx\Payroll\DxServiceProvider;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class ZohoFormLabel extends Model
+class ZohoRecord extends Model
 {
     use HasFactory;
 
-    protected $table = DxServiceProvider::DX_PREFIX_TABLE.'zoho_form_label';
+    protected $table = DxServiceProvider::DX_PREFIX_TABLE.'zoho_records';
 
     protected $fillable = [
-        'form_name',
-        'key',
-        'slug',
-        'label',
-        'form_slug',
+        'zoho_id',
         'form_id',
     ];
-
-    protected $hidden = [
-
-    ];
-
 }

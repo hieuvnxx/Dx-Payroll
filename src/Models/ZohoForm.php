@@ -13,9 +13,9 @@ class ZohoForm extends Model
     protected $table = DxServiceProvider::DX_PREFIX_TABLE.'zoho_form';
 
     protected $fillable = [
-        'form_name',
         'zoho_id',
-        'form_slug',
+        'form_name',
+        'form_link_name',
         'status',
     ];
 
@@ -24,11 +24,11 @@ class ZohoForm extends Model
     ];
 
     public function formSection(){
-        return $this->hasMany(Sections::class,'form_id', 'id');
+        return $this->hasMany(ZohoSection::class,'form_id', 'id');
     }
 
     public function attribute(){
-        return $this->hasMany(Attributes::class,'form_id', 'id');
+        return $this->hasMany(ZohoRecordField::class,'form_id', 'id');
     }
 
 }

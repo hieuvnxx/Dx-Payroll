@@ -10,7 +10,7 @@ class ZohoSection extends Model
 {
     use HasFactory;
 
-    protected $table = DxServiceProvider::DX_PREFIX_TABLE.'sections';
+    protected $table = DxServiceProvider::DX_PREFIX_TABLE.'zoho_sections';
 
     protected $fillable = [
         'form_id',

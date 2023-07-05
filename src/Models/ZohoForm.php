@@ -10,7 +10,7 @@ class ZohoForm extends Model
 {
     use HasFactory;
 
-    protected $table = DxServiceProvider::DX_PREFIX_TABLE.'zoho_form';
+    protected $table = DxServiceProvider::DX_PREFIX_TABLE.'zoho_forms';
 
     protected $fillable = [
         'zoho_id',

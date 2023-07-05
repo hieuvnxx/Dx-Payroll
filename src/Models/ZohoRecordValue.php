@@ -10,7 +10,7 @@ class ZohoRecordValue extends Model
 {
     use HasFactory;
 
-    protected $table = DxServiceProvider::DX_PREFIX_TABLE.'values';
+    protected $table = DxServiceProvider::DX_PREFIX_TABLE.'zoho_record_values';
 
     protected $fillable = [
         'form_id',

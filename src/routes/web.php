@@ -7,4 +7,3 @@ Route::get('/test-route-dxsmartosc-package-payroll', function () {
     return "test-route-dxsmartosc-package-payroll";
 });
 
-Route::get('/test-route-dxsmartosc-package-payroll-employeee-controller-index', [EmployeeController::class, 'index']);

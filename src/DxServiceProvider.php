@@ -6,6 +6,7 @@ use DX\Payroll\Console\Commands\SyncZohoForm;
 use Dx\Payroll\Exceptions\DxHandler;
 use Illuminate\Contracts\Debug\ExceptionHandler;
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Support\Facades\Route;
 
 class DxServiceProvider extends ServiceProvider
 {
@@ -37,9 +38,13 @@ class DxServiceProvider extends ServiceProvider
         $this->app->bind(\Dx\Payroll\Repositories\PayrollSettingsInterface::class,\Dx\Payroll\Repositories\Eloquent\PayrollSettingsRepository::class);
         $this->app->bind(\Dx\Payroll\Repositories\RedisConfigFormInterface::class,\Dx\Payroll\Repositories\Eloquent\RedisConfigFormRepository::class);
         $this->app->bind(\Dx\Payroll\Repositories\ValuesInterface::class,\Dx\Payroll\Repositories\Eloquent\ValuesRepository::class);
-        $this->loadRoutesFrom(__DIR__.'/routes/web.php');
         $this->loadMigrationsFrom(__DIR__.'/database/migrations');
         $this->mergeConfigFrom(__DIR__.'/config/logging.php','logging.channels');
+
+        $this->loadRoutesFrom(__DIR__.'/routes/web.php');
+        Route::prefix('api/dx_payroll/v1')->group(function () {
+            $this->loadRoutesFrom(__DIR__.'/routes/api.php');
+        });
     }
 
     public function loadCommands()

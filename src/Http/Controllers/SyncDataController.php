@@ -2,26 +2,16 @@
 
 namespace Dx\Payroll\Http\Controllers;
 
-use App\Constants\BaseConstant;
-use Carbon\Carbon;
-use Dx\Payroll\Models\ZohoSection;
-use Dx\Payroll\Models\ZohoRecordValue;
-use Dx\Payroll\Models\ZohoForm;
-use Dx\Payroll\Repositories\Eloquent\SectionsRepository;
-use Dx\Payroll\Repositories\ValuesInterface;
-use Dx\Payroll\Repositories\ZohoFormInterface;
 use Illuminate\Http\Request;
-use Dx\Payroll\Models\FactorMasterData;
-use Dx\Payroll\Models\Fomular;
-use Dx\Payroll\Models\FormMasterData;
-use Dx\Payroll\Models\BonusSettings;
-use Dx\Payroll\Models\GeneralSettings;
-use Dx\Payroll\Models\LevelSettings;
-use Dx\Payroll\Models\OverTime;
+use Dx\Payroll\Models\Sections;
+use Dx\Payroll\Models\Values;
 use Dx\Payroll\Models\OverTimeSettings;
 use Dx\Payroll\Models\TaxSettings;
+use Dx\Payroll\Repositories\ValuesInterface;
+use Dx\Payroll\Repositories\ZohoFormInterface;
 use Dx\Payroll\Repositories\RedisConfigFormInterface;
 use Dx\Payroll\Http\Controllers\ZohoController;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 
@@ -52,8 +42,18 @@ class SyncDataController
             return $this->sendError("Empty Form");
         };
         $zoho = app(ZohoController::class);
-
+        DB::enableQueryLog();
         foreach ($allForm as $form){
+//
+            dd(base64_encode(file_get_contents(storage_path('eSign.pdf'))));
+//            $x =  $this->values->getRecords($arrInput->form_name, 1);getRecordByIDClone
+            $x =  $this->values->getRecordByIDClone($arrInput->form_name, $arrInput->zoho_id);
+            dd(DB::getQueryLog(), $x);
+
+            $x =  $this->values->getRecordByID($arrInput->form_name, $arrInput->zoho_id);
+            dd(DB::getQueryLog(), $x);
+            dd($response->toArray());
+            dd($x);
             $i = 0;
             while (true) {
                 if (!empty($arrInput->zoho_id))
@@ -90,7 +90,7 @@ class SyncDataController
                                             $valueIs = $value;
                                         }
                                         try{
-                                            ZohoRecordValue::updateOrCreate(
+                                            Values::updateOrCreate(
                                                 [
                                                     'form_id' => $form->id,
                                                     'attribute_id' => $attribute->id,
@@ -128,7 +128,7 @@ class SyncDataController
                                         try {
                                             foreach ($arrAttributesForm as $ky => $arrAttribute){
                                                 if($arrAttribute == $arrAttributes){
-                                                    $sectionID = ZohoSection::updateOrCreate(
+                                                    $sectionID = Sections::updateOrCreate(
                                                         [
                                                             'id' => $ky,
                                                             'form_id' => $form->id
@@ -143,7 +143,7 @@ class SyncDataController
                                                 foreach ($tabularValue as $keys => $vals) {
                                                     foreach ($form->attribute as $attribute){
                                                         if($keys == $attribute->attributes_label){
-                                                            ZohoRecordValue::updateOrCreate(
+                                                            Values::updateOrCreate(
                                                                 [
                                                                     'form_id' => $form->id,
                                                                     'attribute_id' => $attribute->id,

@@ -14,12 +14,13 @@ return new class extends Migration
      */
     public function up()
     {
-        Schema::create(DxServiceProvider::DX_PREFIX_TABLE.'zoho_forms', function (Blueprint $table) {
+        Schema::create(DxServiceProvider::DX_PREFIX_TABLE.'zoho_form', function (Blueprint $table) {
             $table->id();
-            $table->string('zoho_id', 25);
-            $table->string('form_name', 255);
-            $table->string('form_link_name', 255);
-            $table->tinyInteger('status')->default(1);
+            $table->string('zoho_id', 25)->nullable();
+            $table->string('form_name', 255)->nullable();
+            $table->string('form_slug', 255)->nullable();
+            $table->string('status', 25)->nullable();
+            $table->timestamps();
         });
     }
 
@@ -30,6 +31,6 @@ return new class extends Migration
      */
     public function down()
     {
-        Schema::dropIfExists(DxServiceProvider::DX_PREFIX_TABLE.'zoho_forms');
+        Schema::dropIfExists(DxServiceProvider::DX_PREFIX_TABLE.'zoho_form');
     }
 };

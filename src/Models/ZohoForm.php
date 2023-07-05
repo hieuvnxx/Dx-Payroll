@@ -10,6 +10,8 @@ class ZohoForm extends Model
 {
     use HasFactory;
 
+    public $timestamps = false;
+
     protected $table = DxServiceProvider::DX_PREFIX_TABLE.'zoho_forms';
 
     protected $fillable = [
@@ -17,10 +19,6 @@ class ZohoForm extends Model
         'form_name',
         'form_link_name',
         'status',
-    ];
-
-    protected $hidden = [
-
     ];
 
     public function formSection(){

@@ -11,6 +11,8 @@ class ZohoRecordField extends Model
 {
     use HasFactory;
 
+    public $timestamps = false;
+
     protected $table = DxServiceProvider::DX_PREFIX_TABLE.'zoho_record_fields';
 
     protected $fillable = [

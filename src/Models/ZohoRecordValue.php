@@ -15,7 +15,7 @@ class ZohoRecordValue extends Model
     protected $table = DxServiceProvider::DX_PREFIX_TABLE.'zoho_record_values';
 
     protected $fillable = [
-        'form_id',
+        'record_id',
         'field_id',
         'section_id',
         'row_id',

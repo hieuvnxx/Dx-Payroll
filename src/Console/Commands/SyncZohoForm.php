@@ -35,7 +35,7 @@ class SyncZohoForm extends Command
         }
 
         try {
-            DB::enableQueryLog();
+            DB::beginTransaction();
             ZohoForm::query()->delete();
             ZohoSection::query()->delete();
             ZohoRecordField::query()->delete();

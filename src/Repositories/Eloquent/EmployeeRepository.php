@@ -25,13 +25,9 @@ class EmployeeRepository extends BaseRepository implements EmployeeInterface
         return Employee::class;
     }
 
-    public function getEmployee($code = '')
+    public function getEmployee()
     {
-        if(empty($code)){
-            return $this->model->with('offerSalary')->get();
-        }else{
-            return $this->model->where('code', $code)->with('offerSalary')->get();
-        }
+        return $this->model->with('offerSalary')->get();
     }
 
     public function getEmployeeByCode($code = '')

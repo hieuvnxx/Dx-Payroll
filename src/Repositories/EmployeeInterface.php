@@ -12,14 +12,14 @@ use Prettus\Repository\Contracts\RepositoryInterface;
 interface EmployeeInterface extends RepositoryInterface
 {
     /**
-     * Get all/one employee
+     * Get ALL employee
      * @param $id
      * @return mixed
      */
-    public function getEmployee($id);
+    public function getEmployee();
 
     /**
-     * Get all/one All Info of employee
+     * Get ONE Info of employee
      * @param $id
      * @return mixed
      */

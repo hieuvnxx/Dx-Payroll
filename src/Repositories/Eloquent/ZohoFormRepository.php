@@ -29,7 +29,7 @@ class ZohoFormRepository extends BaseRepository implements ZohoFormInterface
         $response = [];
         $allForm = ZohoForm::all();
         if (!empty($allForm)) {
-            foreach ($allForm as $value) {
+            foreach ($allForm as $form) {
                 $response['attendance']['getUserReport'] = 'attendance/getUserReport';
                 $response['attendance']['getAttendanceEntries'] = 'attendance/getAttendanceEntries';
                 $response['attendance']['getShiftConfiguration'] = 'attendance/getShiftConfiguration';
@@ -41,16 +41,16 @@ class ZohoFormRepository extends BaseRepository implements ZohoFormInterface
                 $response['Leave']['insertRecord'] = 'forms/leave/insertRecord';
                 $response['Leave']['getHolidays'] = 'leave/v2/holidays/get';
                 $response['deleteRecords'] = 'deleteRecords';
-                $response[$value->form_name]['components'] = 'forms/' . $value->form_name . '/components';
-                $response[$value->form_name]['getDataByID'] = 'forms/' . $value->form_name . '/getDataByID';
-                $response[$value->form_name]['getRecordByID'] = 'forms/' . $value->form_name . '/getRecordByID';
-                $response[$value->form_name]['getRecords'] = 'forms/' . $value->form_name . '/getRecords';
-                $response[$value->form_name]['insertRecord'] = 'forms/json/' . $value->form_name . '/insertRecord';
-                $response[$value->form_name]['updateRecord'] = 'forms/json/' . $value->form_name . '/updateRecord';
-                $response[$value->form_name]['deleteRecords'] = $value->form_name;
-                if(!empty($value->formSection)){
-                    foreach ($value->formSection as $sections){
-                        $response[$value->form_name][$sections->sections_id] = $sections->sections_id;
+                $response[$form->form_link_name]['components'] = 'forms/' . $form->form_link_name . '/components';
+                $response[$form->form_link_name]['getDataByID'] = 'forms/' . $form->form_link_name . '/getDataByID';
+                $response[$form->form_link_name]['getRecordByID'] = 'forms/' . $form->form_link_name . '/getRecordByID';
+                $response[$form->form_link_name]['getRecords'] = 'forms/' . $form->form_link_name . '/getRecords';
+                $response[$form->form_link_name]['insertRecord'] = 'forms/json/' . $form->form_link_name . '/insertRecord';
+                $response[$form->form_link_name]['updateRecord'] = 'forms/json/' . $form->form_link_name . '/updateRecord';
+                $response[$form->form_link_name]['deleteRecords'] = $form->form_link_name;
+                if(!empty($form->formSection)){
+                    foreach ($form->formSection as $sections){
+                        $response[$form->form_link_name][$sections->section_label] = $sections->section_name;
                     }
                 }
             }

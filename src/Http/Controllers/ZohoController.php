@@ -221,6 +221,7 @@ class ZohoController extends BaseController
         $response = $this->callZoho($url, $body);
         return $response;
     }
+
     /**
      *  Lấy danh sách zoho form
      * @return array
@@ -228,9 +229,9 @@ class ZohoController extends BaseController
     public function getSectionForm(string $form = '', $version = 2, bool $convert = true): array
     {
         $body = [];
-//        if ($version) {
-//            $body['version'] = 2;
-//        }
+        if ($version) {
+            $body['version'] = 2;
+        }
         return $this->callZoho($form,  $body, $convert);
     }
 
@@ -240,41 +241,43 @@ class ZohoController extends BaseController
      */
     public function getAttendanceByEmployee($form = '', $empCode = '', $startDate = '', $endDate = '')
     {
+        $response = [];
         $bodyAttendance = [
             'sdate' => date('d-m-Y', strtotime($startDate)),
             'edate' => date('d-m-Y', strtotime($endDate)),
             'empId' => $empCode,
             'dateFormat' => 'dd-MM-yyyy'
         ];
-        return $this->callZoho($form, $bodyAttendance, false);
+        $response = $this->callZoho($form, $bodyAttendance, false);
+        ksort($response);
+        return $response;
     }
 
     /*
-     * Get Shift configuration details of an employee
+     * Thông tin các ngày cuối tuần, lễ ...
      */
-    public function getShiftConfigurationByEmployee($form = '', $empCode = '', $startDate = '', $endDate = '')
+    public function getShiftConfigurationByEmployee($form = '', $empCode = '', $startDate = '', $endDate = '', $dataPunch = [])
     {
-        $response = ['data' => []];
-        //Thông tin các ngày cuối tuần, lễ ...
+        $response = [];
         $bodyShift = [
             'sdate' => $startDate,
             'edate' => $endDate,
             'empId' => $empCode,
         ];
         $result = $this->callZoho($form, $bodyShift, true);
-        $standardWorkingDay = 0;
         if(!empty($result['userShiftDetails']['shiftList'])){
             foreach ($result['userShiftDetails']['shiftList'] as $item){
-                if(!isset($item['isWeekend'])){
-                    $dateItem = date('Y-m-d', strtotime($item['date']));
-                    $response['data'][$dateItem] = $item;
-                    if(date('w', strtotime($dateItem)) != 6 && date('w', strtotime($dateItem)) != 0){
-                        $standardWorkingDay ++;
+                if(!empty($dataPunch)){
+                    foreach ($dataPunch as $date => $punch){
+                        $dateItem = date('Y-m-d', strtotime($item['date']));
+                        if(strtotime($item['date']) == strtotime($date)){
+                            $response[$dateItem] = array_merge($punch, $item);
+                        }
                     }
                 }
             }
+            ksort($response);
         }
-        $response['standard_working_day'] = $standardWorkingDay;
         return $response;
     }
 
@@ -286,20 +289,41 @@ class ZohoController extends BaseController
         $body       = [];
         $fromDate   = date('Y-m-d', strtotime($fromDate));
         $toDate     = date('Y-m-d', strtotime($toDate));
-
         $body['searchParams'] = "{searchField: 'From', searchOperator: 'Before', searchCriteria: 'AND', searchText : " . "'" . $toDate . "'" . "} | {searchField: 'To', searchOperator: 'After', searchCriteria: 'AND', searchText : " . "'" . $fromDate . "'" . "} | {searchField: 'Employee_ID', searchOperator: 'Like', searchText : " . "'" . $employeeId . "'" . "} ";
         return $this->callZoho($form, $body, $convert);
     }
 
+    public function getOvertimeByEmployee($form, $empCode = '', $startDate = '', $endDate = '')
+    {
+        $startDate   = date('Y-m-d', strtotime($startDate));
+        $endDate     = date('Y-m-d', strtotime($endDate));
+        $body["searchParams"] = "{searchField: 'AddedBy', searchOperator: 'Contains', searchText : '" . $empCode . "'} | {searchField: 'date', searchOperator: 'Between', searchText : '" . $startDate . ";" . $endDate . "'}";
+        return $this->callZoho($form, $body);
+    }
+
     public function searchMonthlyWorking($form, $empCode = '', $monthly = '')
     {
-        $body['searchParams'] = "{searchField: 'employee', searchOperator: 'Contains', searchText : " . "'" . $empCode . "'" . "} | {searchField: 'month', searchOperator: 'Is', searchText : " . "'" . $monthly . "'" . "}";
+        $body['searchParams'] = "{searchField: 'employee', searchOperator: 'Contains', searchText : " . "'" . $empCode . "'" . "} | {searchField: 'salary_period', searchOperator: 'Is', searchText : " . "'" . $monthly . "'" . "}";
         return $this->callZoho($form, $body, true);
     }
 
-    public function getOvertimeByEmployee($form, $empCode = '', $startDate = '', $endDate = '')
+    public function createdOrUpdated($form = '', $data = [], $tabular = [], $zohoId = '',  $formatDate = '')
     {
-        $body["searchParams"] = "{searchField: 'Emp_info', searchOperator: 'Is', searchText : '" . $empCode . "'} | {searchField: 'Date', searchOperator: 'Between', searchText : '" . $startDate . ";" . $endDate . "'}";
-        return $this->callZoho($form, $body);
+        $body = [];
+        if($zohoId){
+            $body['recordId'] = $zohoId;
+        }
+        if(!empty($data)){
+            $body['inputData'] = json_encode($data, JSON_UNESCAPED_UNICODE);
+        }
+        if(!empty($tabular)){
+            $body['tabularData'] = json_encode($tabular, JSON_UNESCAPED_UNICODE);
+        }
+        if($formatDate){
+            $body['dateFormat'] = $formatDate;
+        }
+
+        $resault = $this->callZoho($form, $body, true);
+        return $resault;
     }
 }

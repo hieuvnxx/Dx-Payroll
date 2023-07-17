@@ -9,13 +9,13 @@ use Prettus\Repository\Contracts\RepositoryInterface;
  *
  * @package namespace App\Repositories;
  */
-interface ValuesInterface extends RepositoryInterface
+interface SectionsInterface extends RepositoryInterface
 {
     /**
      * Get config from form
      * @param
      * @return mixed
      */
-    public function deleteRecords($formName, $ZohoID);
+    public function getSectionID($sectioName);
 
 }

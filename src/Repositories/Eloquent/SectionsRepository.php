@@ -2,8 +2,8 @@
 
 namespace Dx\Payroll\Repositories\Eloquent;
 
-use Dx\Payroll\Models\Sections;
-use Dx\Payroll\Repositories\RefreshTokenInterface;
+use Dx\Payroll\Models\ZohoSection;
+use Dx\Payroll\Repositories\SectionsInterface;
 use Prettus\Repository\Eloquent\BaseRepository;
 use Prettus\Repository\Criteria\RequestCriteria;
 
@@ -12,7 +12,7 @@ use Prettus\Repository\Criteria\RequestCriteria;
  *
  * @package namespace App\Repositories;
  */
-class SectionsRepository extends BaseRepository implements RefreshTokenInterface
+class SectionsRepository extends BaseRepository implements SectionsInterface
 {
 
     /**
@@ -22,7 +22,10 @@ class SectionsRepository extends BaseRepository implements RefreshTokenInterface
      */
     public function model()
     {
-        return Sections::class;
+        return ZohoSection::class;
     }
 
+    public function getSectionID($sectioName){
+        return $this->where('section_name', $sectioName)->get();
+    }
 }

@@ -301,9 +301,9 @@ class ZohoController extends BaseController
         return $this->callZoho($form, $body);
     }
 
-    public function searchMonthlyWorking($form, $empCode = '', $monthly = '')
+    public function searchPayroll($form, $code = '')
     {
-        $body['searchParams'] = "{searchField: 'employee', searchOperator: 'Contains', searchText : " . "'" . $empCode . "'" . "} | {searchField: 'salary_period', searchOperator: 'Is', searchText : " . "'" . $monthly . "'" . "}";
+        $body['searchParams'] = "{searchField: 'code', searchOperator: 'Is', searchText : " . "'" . $code . "'" . "}";
         return $this->callZoho($form, $body, true);
     }
 

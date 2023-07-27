@@ -32,20 +32,6 @@ class SyncData extends Command
      */
     public function handle()
     {
-        $formName = [
-            'employee',
-            'ot_request',
-            'setting',
-            'factor_master_data',
-            'fomular',
-            'form_master_data',
-        ];
-
-        $arrInput = new Request;
-        foreach ($formName as $form) {
-            $arrInput['form_name'] = $form;
-            $this->syncData->processSyncData($arrInput);
-        }
-        return 0;
+        return $this->syncData->processSyncData();
     }
 }

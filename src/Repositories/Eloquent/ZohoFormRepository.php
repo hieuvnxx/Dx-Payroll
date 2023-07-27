@@ -27,9 +27,8 @@ class ZohoFormRepository extends BaseRepository implements ZohoFormInterface
     public function formatFormConfig()
     {
         $response = [];
-        $allForm = ZohoForm::all();
-        if (!empty($allForm)) {
-            foreach ($allForm as $form) {
+        if (!empty($this->all())) {
+            foreach ($this->all() as $form) {
                 $response['attendance']['getUserReport'] = 'attendance/getUserReport';
                 $response['attendance']['getAttendanceEntries'] = 'attendance/getAttendanceEntries';
                 $response['attendance']['getShiftConfiguration'] = 'attendance/getShiftConfiguration';
@@ -54,6 +53,20 @@ class ZohoFormRepository extends BaseRepository implements ZohoFormInterface
                     }
                 }
             }
+        }
+        return $response;
+    }
+
+
+    public function getFieldOfForm($formName)
+    {
+        $response = [];
+        $arrField = $this->where('form_link_name', $formName)
+            ->join('dx_zoho_record_fields', 'dx_zoho_record_fields.form_id', '=', 'dx_zoho_forms.id')
+            ->join('dx_zoho_sections', 'dx_zoho_sections.id', '=', 'dx_zoho_record_fields.section_id', 'left outer')
+            ->get();
+        if(!empty($arrField)){
+            $response = $arrField;
         }
         return $response;
     }

@@ -18,4 +18,11 @@ interface ZohoFormInterface extends RepositoryInterface
      */
     public function formatFormConfig();
 
+
+    /**
+     * Get field of form
+     * @param
+     * @return mixed
+     */
+    public function getFieldOfForm($formName);
 }

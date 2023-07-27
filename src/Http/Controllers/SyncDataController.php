@@ -29,42 +29,51 @@ use Illuminate\Support\Facades\Log;
 class SyncDataController
 {
 
-    public function __construct()
+    protected $zohoFor, $zohoController;
+    public function __construct(ZohoFormInterface $zohoForm)
     {
-        $this->payrollForm = [
-            "form_master_form_name" => "form_master_data",
-            "factor_master_form_name" => "factor_master_data",
-            "fomular_form_name" => "fomular",
-        ];
+        $this->zohoForm = $zohoForm;
+        $this->zohoController = app(ZohoController::class);
+        $this->notSynctoLocal = [
+            "monthly_form_name" => "monthly_working_time",
+            "payslip_form_name" => "payslip1"];
+        $this->formMasterData = 'form_master_data';
+        $this->syncToMasterData = [
+            "employee_form_name" => "employee",
+            "monthly_form_name" => "monthly_working_time",];
     }
 
     public function processSyncData(Request $arrInput){
         $config = app(RedisConfigFormInterface::class)->getConfig();
-        if (empty($config))
-        {
+        if (empty($config)){
             return $this->sendError("No have Config");
         }
-        $zohoForm = app(ZohoFormInterface::class);
-        if(empty($arrInput->form_name))
-        {
-            $allForm = $zohoForm->all();
+
+        if(isset($arrInput->master_data)){
+            return $this->syncMasterData($config);
+        }
+
+        if(!isset($arrInput->form_name)){
+            $allForm = $this->zohoForm->all();
         }else{
-            $allForm = $zohoForm->findByField('form_link_name', $arrInput->form_name);
+            $allForm = $this->zohoForm->findByField('form_link_name', $arrInput->form_name);
         }
         if(empty($allForm))
         {
             return $this->sendError("Empty Form");
         };
-        $zoho = app(ZohoController::class);
 
         foreach ($allForm as $form){
             $i = 0;
             while (true) {
+                if(in_array($form->form_link_name, $this->notSynctoLocal)){
+                    break;
+                }
                 if($arrInput->zoho_id == 'all')
                 {
                     $body['sIndex'] = $i * 200;
                     $body['limit'] = 200;
-                    $resData = $zoho->getRecords($config[$form->form_link_name]['getRecords'], $body, true);
+                    $resData = $this->zohoController->getRecords($config[$form->form_link_name]['getRecords'], $body, true);
                 }elseif (!empty($arrInput->zoho_id))
                 {
                     //Delete record;
@@ -73,7 +82,7 @@ class SyncDataController
                         return $this->records->deleteRecords($form->id, $arrInput->zoho_id);
                     }
 
-                    $resEmp = $zoho->getRecordByID($arrInput->zoho_id, $config[$form->form_link_name]['getRecordByID']);
+                    $resEmp = $this->zohoController->getRecordByID($arrInput->zoho_id, $config[$form->form_link_name]['getRecordByID']);
                     if(array_key_exists('errors', $resEmp)){
                         $resData = $resEmp;
                     }else{
@@ -85,8 +94,9 @@ class SyncDataController
                     $body['sIndex'] = $i * 200;
                     $body['limit'] = 200;
                     $body['searchParams'] = "{searchField: 'ModifiedTime', searchOperator: 'Yesterday'}";
-                    $resData = $zoho->getRecords($config[$form->form_link_name]['getRecords'], $body, true);
+                    $resData = $this->zohoController->getRecords($config[$form->form_link_name]['getRecords'], $body, true);
                 }
+
                 if(empty($resData) || array_key_exists('errors', $resData) || (!empty($arrInput->zoho_id) && $i == 1)) break;
                 if(!empty($resData)){
                     foreach ($resData as $data){
@@ -180,125 +190,63 @@ class SyncDataController
         echo 'End Sync '.$arrInput->form_name."\n";
     }
 
-    public function syncFormData($data){
-        $body['recordId'] = $data['Zoho_ID'];
-        $responseData = $this->callZoho('forms/leave/getRecordByID', $body, true);
-        foreach ($responseData['DayDetails'] as $date => $detail) {
-            if (empty($detail)) {
-                continue;
+    public function syncMasterData($config = []){
+        // get zoho master data
+        $index = 0;
+        $allMasterData = [];
+        do{
+            $body['sIndex'] = $index * 200;
+            $body['limit'] = 200;
+            $arrData = $this->zohoController->getRecords($config[$this->formMasterData]['getRecords'], $body, true);
+            if(!isset($arrData['errors'])){
+                $allMasterData = array_merge($allMasterData, $arrData);
             }
-            if (isset($data['action']) && $data['action'] == 'delete') {
-                Leave::where('zoho_id', (string)$data["Zoho_ID"])->delete();
-                continue;
-            }
-            try {
-                Leave::updateOrCreate(
-                    [
-                        'zoho_id' => (string)$data['Zoho_ID'],
-                        'date_leave' => date('Y-m-d', strtotime($date)),
-                    ],
-                    [
-                        'employee' => $data['Employee_ID'],
-                        'employee_id' => $data['Employee_ID.ID'],
-                        'leave_type' => $data['Leavetype'],
-                        'from' => $data['From'] != '' ? date('Y-m-d', strtotime($data["From"])) : null,
-                        'to' => $data['To'] != '' ? date('Y-m-d', strtotime($data["To"])) : null,
-                        'date_of_request' => $data['DateOfRequest'] != '' ? date('Y-m-d',
-                            strtotime($data["DateOfRequest"])) : null,
-                        'reason' => $data['Reasonforleave'],
-                        'status' => $data['ApprovalStatus'],
-                        'count_leave' => (double)$detail['LeaveCount'],
-                        'session' => isset($detail['Session']) ? $detail['Session'] : '0',
-                        'total' => (double)$data['Daystaken'],
-                        'approval_status' => $data['ApprovalStatus'],
-                    ]
-                );
-            } catch (\Exception $e) {
-                $this->writeLog(BaseConstant::ERROR_TYPE, "SyncForm", 'ERROR : Lỗi ' . $e);
-                continue;
-            }
-        }
-    }
+            $index++;
+        }while (!isset($arrData['errors']));
 
-    public function syncFormFactor($data){
-        $body['recordId'] = $data['Zoho_ID'];
-        $responseData = $this->callZoho('forms/leave/getRecordByID', $body, true);
-        foreach ($responseData['DayDetails'] as $date => $detail) {
-            if (empty($detail)) {
-                continue;
-            }
-            if (isset($data['action']) && $data['action'] == 'delete') {
-                Leave::where('zoho_id', (string)$data["Zoho_ID"])->delete();
-                continue;
-            }
-            try {
-                Leave::updateOrCreate(
-                    [
-                        'zoho_id' => (string)$data['Zoho_ID'],
-                        'date_leave' => date('Y-m-d', strtotime($date)),
-                    ],
-                    [
-                        'employee' => $data['Employee_ID'],
-                        'employee_id' => $data['Employee_ID.ID'],
-                        'leave_type' => $data['Leavetype'],
-                        'from' => $data['From'] != '' ? date('Y-m-d', strtotime($data["From"])) : null,
-                        'to' => $data['To'] != '' ? date('Y-m-d', strtotime($data["To"])) : null,
-                        'date_of_request' => $data['DateOfRequest'] != '' ? date('Y-m-d',
-                            strtotime($data["DateOfRequest"])) : null,
-                        'reason' => $data['Reasonforleave'],
-                        'status' => $data['ApprovalStatus'],
-                        'count_leave' => (double)$detail['LeaveCount'],
-                        'session' => isset($detail['Session']) ? $detail['Session'] : '0',
-                        'total' => (double)$data['Daystaken'],
-                        'approval_status' => $data['ApprovalStatus'],
-                    ]
-                );
-            } catch (\Exception $e) {
-                $this->writeLog(BaseConstant::ERROR_TYPE, "SyncForm", 'ERROR : Lỗi ' . $e);
-                continue;
-            }
-        }
-    }
+        // Sync data fields to zoho master data
+        foreach ($this->syncToMasterData as $formSync){
+            $listField = $this->zohoForm->getFieldOfForm($formSync);
 
-    public function syncFormFomular($data){
-        dd($data);
-        $body['recordId'] = $data['Zoho_ID'];
-        $responseData = $this->callZoho('forms/leave/getRecordByID', $body, true);
-        foreach ($responseData['DayDetails'] as $date => $detail) {
-            if (empty($detail)) {
-                continue;
-            }
-            if (isset($data['action']) && $data['action'] == 'delete') {
-                Leave::where('zoho_id', (string)$data["Zoho_ID"])->delete();
-                continue;
-            }
-            try {
-                Leave::updateOrCreate(
-                    [
-                        'zoho_id' => (string)$data['Zoho_ID'],
-                        'date_leave' => date('Y-m-d', strtotime($date)),
-                    ],
-                    [
-                        'employee' => $data['Employee_ID'],
-                        'employee_id' => $data['Employee_ID.ID'],
-                        'leave_type' => $data['Leavetype'],
-                        'from' => $data['From'] != '' ? date('Y-m-d', strtotime($data["From"])) : null,
-                        'to' => $data['To'] != '' ? date('Y-m-d', strtotime($data["To"])) : null,
-                        'date_of_request' => $data['DateOfRequest'] != '' ? date('Y-m-d',
-                            strtotime($data["DateOfRequest"])) : null,
-                        'reason' => $data['Reasonforleave'],
-                        'status' => $data['ApprovalStatus'],
-                        'count_leave' => (double)$detail['LeaveCount'],
-                        'session' => isset($detail['Session']) ? $detail['Session'] : '0',
-                        'total' => (double)$data['Daystaken'],
-                        'approval_status' => $data['ApprovalStatus'],
-                    ]
-                );
-            } catch (\Exception $e) {
-                $this->writeLog(BaseConstant::ERROR_TYPE, "SyncForm", 'ERROR : Lỗi ' . $e);
-                continue;
+            if($listField->isNotEmpty()){
+                foreach ($listField as $field) {
+                    //add
+                    $zohoId = '';
+                    $action = 'insertRecord';
+                    $data['form_name']      = $field->form_name;
+                    $data['form_label']     = $field->form_link_name;
+                    $data['Table_Name']     = $field->section_name;
+                    $data['Label_Table']    = $field->section_label;
+                    $data['field_name']     = $field->field_name;
+                    $data['field_label']    = $field->field_label;
+                    if(!empty($allMasterData)){
+                        foreach ($allMasterData as $keyData => $masterData){
+                            if($field->field_label == $masterData['field_label'] && $field->section_label == $masterData['Label_Table']){
+                                $action = 'updateRecord';
+                                $zohoId = $masterData['Zoho_ID'];
+                                unset($allMasterData[$keyData]);
+                            }
+                        }
+                    }
+                    $resMasterData = $this->zohoController->createdOrUpdated($config[$this->formMasterData][$action], $data, [], $zohoId);
+                    Log::channel('dx')->info($resMasterData);
+                }
             }
         }
+
+        // delete record in master data zoho
+        if(!empty($allMasterData)){
+            foreach ($allMasterData as $masterData){
+                $resMasterData = $this->zohoController->deleteRecords($this->formMasterData, $masterData['Zoho_ID']);
+                Log::channel('dx')->info($resMasterData);
+            }
+        }
+
+        //sync masterdata to local
+        $arrSyncData = new Request;
+        $arrSyncData['zoho_id']     = 'all';
+        $arrSyncData['form_name']   = $this->formMasterData;
+        $this->processSyncData($arrSyncData);
     }
 
 }

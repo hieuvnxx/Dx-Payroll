@@ -44,10 +44,16 @@ class DxHandler extends ExceptionHandler
      */
     public function register()
     {
-        $this->renderable(function (\Symfony\Component\HttpKernel\Exception\MethodNotAllowedHttpException $e, Request $request) {
+        $this->renderable(function (\Symfony\Component\HttpKernel\Exception\MethodNotAllowedHttpException $e, Request $request)
+        {
             if ($request->is('api/*')) {
+                if (str_contains($e->getMessage(), 'api/login')) {
+                    return response()->json([
+                        'message' => 'Bearer Token is required',
+                    ], 404);
+                }
                 return response()->json([
-                    'message' => 'Does not support for METHOD : ' . $request->getMethod(),
+                    'message' => $e->getMessage(),
                 ], 404);
             }
         });

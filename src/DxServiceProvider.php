@@ -34,12 +34,9 @@ class DxServiceProvider extends ServiceProvider
         $this->app->singleton(ExceptionHandler::class,DxHandler::class);
         $this->app->bind(\Dx\Payroll\Repositories\RefreshTokenInterface::class,\Dx\Payroll\Repositories\Eloquent\RefreshTokenRepository::class);
         $this->app->bind(\Dx\Payroll\Repositories\ZohoFormInterface::class,\Dx\Payroll\Repositories\Eloquent\ZohoFormRepository::class);
-        $this->app->bind(\Dx\Payroll\Repositories\EmployeeInterface::class,\Dx\Payroll\Repositories\Eloquent\EmployeeRepository::class);
-        $this->app->bind(\Dx\Payroll\Repositories\PayrollSettingsInterface::class,\Dx\Payroll\Repositories\Eloquent\PayrollSettingsRepository::class);
         $this->app->bind(\Dx\Payroll\Repositories\RedisConfigFormInterface::class,\Dx\Payroll\Repositories\Eloquent\RedisConfigFormRepository::class);
         $this->app->bind(\Dx\Payroll\Repositories\RecordsInterface::class,\Dx\Payroll\Repositories\Eloquent\RecordsRepository::class);
         $this->app->bind(\Dx\Payroll\Repositories\SectionsInterface::class,\Dx\Payroll\Repositories\Eloquent\SectionsRepository::class);
-
         $this->loadRoutesFrom(__DIR__.'/routes/web.php');
         Route::prefix('api/dx_payroll/v1')->group(function () {
             $this->loadRoutesFrom(__DIR__.'/routes/api.php');

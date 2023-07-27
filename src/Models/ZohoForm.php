@@ -5,6 +5,8 @@ namespace Dx\Payroll\Models;
 use Dx\Payroll\DxServiceProvider;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Dx\Payroll\Models\ZohoRecordField;
+use Dx\Payroll\Models\ZohoSection;
 
 class ZohoForm extends Model
 {

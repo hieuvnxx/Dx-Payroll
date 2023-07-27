@@ -48,7 +48,7 @@ class SyncZohoForm extends Command
                     'form_link_name' => $form['formLinkName'],
                     'status' => $form["isVisible"] ? 1 : 0
                 ]);
-    
+
                 $arrComp = $zoho->getSectionForm('forms/'.$form['formLinkName'].'/components', 2, false);
                 if (!isset($arrComp['response']['result']) || empty($arrComp['response']['result'])) {
                     continue;

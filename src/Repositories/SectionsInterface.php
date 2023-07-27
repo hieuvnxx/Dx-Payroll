@@ -9,20 +9,13 @@ use Prettus\Repository\Contracts\RepositoryInterface;
  *
  * @package namespace App\Repositories;
  */
-interface ZohoFormInterface extends RepositoryInterface
+interface SectionsInterface extends RepositoryInterface
 {
     /**
      * Get config from form
      * @param
      * @return mixed
      */
-    public function formatFormConfig();
+    public function getSectionID($sectioName);
 
-
-    /**
-     * Get field of form
-     * @param
-     * @return mixed
-     */
-    public function getFieldOfForm($formName);
 }

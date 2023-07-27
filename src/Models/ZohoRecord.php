@@ -3,6 +3,7 @@
 namespace Dx\Payroll\Models;
 
 use Dx\Payroll\DxServiceProvider;
+use Dx\Payroll\Models\ZohoRecordValue;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -18,4 +19,9 @@ class ZohoRecord extends Model
         'zoho_id',
         'form_id',
     ];
+
+    public function values(){
+        return $this->hasMany(ZohoRecordValue::class,'record_id', 'id');
+    }
+
 }

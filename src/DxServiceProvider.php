@@ -5,6 +5,7 @@ namespace Dx\Payroll;
 use DX\Payroll\Console\Commands\SyncZohoForm;
 use Dx\Payroll\Exceptions\DxHandler;
 use Illuminate\Contracts\Debug\ExceptionHandler;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 
 class DxServiceProvider extends ServiceProvider
@@ -33,11 +34,13 @@ class DxServiceProvider extends ServiceProvider
         $this->app->singleton(ExceptionHandler::class,DxHandler::class);
         $this->app->bind(\Dx\Payroll\Repositories\RefreshTokenInterface::class,\Dx\Payroll\Repositories\Eloquent\RefreshTokenRepository::class);
         $this->app->bind(\Dx\Payroll\Repositories\ZohoFormInterface::class,\Dx\Payroll\Repositories\Eloquent\ZohoFormRepository::class);
-        $this->app->bind(\Dx\Payroll\Repositories\EmployeeInterface::class,\Dx\Payroll\Repositories\Eloquent\EmployeeRepository::class);
-        $this->app->bind(\Dx\Payroll\Repositories\PayrollSettingsInterface::class,\Dx\Payroll\Repositories\Eloquent\PayrollSettingsRepository::class);
         $this->app->bind(\Dx\Payroll\Repositories\RedisConfigFormInterface::class,\Dx\Payroll\Repositories\Eloquent\RedisConfigFormRepository::class);
-        $this->app->bind(\Dx\Payroll\Repositories\ValuesInterface::class,\Dx\Payroll\Repositories\Eloquent\ValuesRepository::class);
+        $this->app->bind(\Dx\Payroll\Repositories\RecordsInterface::class,\Dx\Payroll\Repositories\Eloquent\RecordsRepository::class);
+        $this->app->bind(\Dx\Payroll\Repositories\SectionsInterface::class,\Dx\Payroll\Repositories\Eloquent\SectionsRepository::class);
         $this->loadRoutesFrom(__DIR__.'/routes/web.php');
+        Route::prefix('api/dx_payroll/v1')->group(function () {
+            $this->loadRoutesFrom(__DIR__.'/routes/api.php');
+        });
         $this->loadMigrationsFrom(__DIR__.'/database/migrations');
         $this->mergeConfigFrom(__DIR__.'/config/logging.php','logging.channels');
     }

@@ -21,4 +21,8 @@ class ZohoRecordValue extends Model
         'row_id',
         'value',
     ];
+
+    public function records(){
+        return $this->belongsTo(ZohoRecordValue::class,'id', 'record_id');
+    }
 }

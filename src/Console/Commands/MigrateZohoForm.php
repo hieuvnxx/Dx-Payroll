@@ -24,6 +24,8 @@ class MigrateZohoForm extends Command
 
     public function __construct()
     {
+        parent::__construct();
+
         $this->zohoLib = ZohoPeopleIntegration::getInstance();
     }
 

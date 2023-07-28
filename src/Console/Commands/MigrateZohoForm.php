@@ -22,13 +22,6 @@ class MigrateZohoForm extends Command
 
     protected $zohoLib;
 
-    public function __construct()
-    {
-        parent::__construct();
-
-        $this->zohoLib = ZohoPeopleIntegration::getInstance();
-    }
-
     /**
      * Execute the console command.
      *
@@ -36,6 +29,8 @@ class MigrateZohoForm extends Command
      */
     public function handle()
     {
+        $this->zohoLib = ZohoPeopleIntegration::getInstance();
+
         //get form from zoho with api
         $arrForm = $this->zohoLib->callZoho('forms', [], false);
         if (!isset($arrForm['response']['result']) || empty($arrForm['response']['result'])) {

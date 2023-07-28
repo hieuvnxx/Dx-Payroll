@@ -4,6 +4,7 @@ namespace Dx\Payroll\Http\Controllers;
 
 use Dx\Payroll\Helpers\getAPI;
 use Dx\Payroll\Http\Controllers\Api\BaseController;
+use Dx\Payroll\Integrations\ZohoPeopleIntegration;
 use Dx\Payroll\Repositories\Eloquent\RecordsRepository;
 use Dx\Payroll\Repositories\EmployeeInterface;
 use Dx\Payroll\Repositories\RedisConfigFormInterface;
@@ -15,13 +16,13 @@ class MonthlyController extends BaseController
 {
     protected $payroll, $repoSections, $zoho, $redisConfigForm, $records;
 
-    public function __construct(PayrollController $payrollController, SectionsInterface $repoSections, ZohoController $zohoController,
+    public function __construct(PayrollController $payrollController, SectionsInterface $repoSections,
         RedisConfigFormInterface $redisConfigForm, RecordsRepository $records, ZohoFormInterface $zohoForm)
     {
         $this->redisConfigForm = $redisConfigForm;
         $this->payroll = $payrollController;
         $this->repoSections = $repoSections;
-        $this->zoho = $zohoController;
+        $this->zoho = ZohoPeopleIntegration::getInstance();
         $this->records = $records;
         $this->zohoForm = $zohoForm;
     }

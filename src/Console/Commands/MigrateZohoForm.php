@@ -6,8 +6,8 @@ use Dx\Payroll\Models\ZohoRecordField;
 use Dx\Payroll\Models\ZohoSection;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
-use Dx\Payroll\Http\Controllers\ZohoController;
 use Dx\Payroll\Models\ZohoForm;
+use Dx\Payroll\Integrations\ZohoPeopleIntegration;
 
 class MigrateZohoForm extends Command
 {
@@ -20,13 +20,11 @@ class MigrateZohoForm extends Command
      */
     protected $description = 'Command to migrate first time database from zoho';
 
-    protected $zohoRepo;
+    protected $zohoLib;
 
-    public function __construct(ZohoController $zohoRepo)
+    public function __construct()
     {
-        $this->zohoRepo = $zohoRepo;
-
-        parent::__construct();
+        $this->zohoLib = ZohoPeopleIntegration::getInstance();
     }
 
     /**
@@ -37,7 +35,7 @@ class MigrateZohoForm extends Command
     public function handle()
     {
         //get form from zoho with api
-        $arrForm = $this->zohoRepo->callZoho('forms', [], false);
+        $arrForm = $this->zohoLib->callZoho('forms', [], false);
         if (!isset($arrForm['response']['result']) || empty($arrForm['response']['result'])) {
             return $this->info('Error get form components!');
         }
@@ -58,7 +56,7 @@ class MigrateZohoForm extends Command
                     'status' => $form["isVisible"] ? 1 : 0
                 ]);
 
-                $arrComp = $zoho->getSectionForm('forms/'.$form['formLinkName'].'/components', 2, false);
+                $arrComp = $this->zohoLib->getSectionForm('forms/'.$form['formLinkName'].'/components', 2, false);
                 if (!isset($arrComp['response']['result']) || empty($arrComp['response']['result'])) {
                     continue;
                 }

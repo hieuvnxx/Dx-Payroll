@@ -1,6 +1,5 @@
 <?php
 
-use Dx\Payroll\Http\Controllers\EmployeeController;
 use Illuminate\Support\Facades\Route;
 use Dx\Payroll\Http\Controllers\PayrollController;
 use Dx\Payroll\Http\Controllers\SyncDataController;

@@ -3,6 +3,7 @@
 namespace Dx\Payroll\Http\Controllers;
 
 use Dx\Payroll\Http\Controllers\Api\BaseController;
+use Dx\Payroll\Integrations\ZohoPeopleIntegration;
 use Dx\Payroll\Jobs\MonthlyJob;
 use Dx\Payroll\Jobs\PayslipJob;
 use Dx\Payroll\Repositories\Eloquent\RecordsRepository;
@@ -17,10 +18,10 @@ class PayrollController extends BaseController
 
     protected $redisConfigForm, $zoho, $records;
 
-    public function __construct(ZohoController $zohoController, RedisConfigFormInterface $redisConfigForm,
+    public function __construct(RedisConfigFormInterface $redisConfigForm,
         RedisConfigFormRepository $redisControl, RecordsRepository $records)
     {
-        $this->zoho = $zohoController;
+        $this->zoho = ZohoPeopleIntegration::getInstance();
         $this->redisConfigForm = $redisConfigForm;
         $this->redisControl = $redisControl;
         $this->records = $records;

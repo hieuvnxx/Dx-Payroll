@@ -7,9 +7,6 @@ use Carbon\Carbon;
 use Dx\Payroll\Models\ZohoSection;
 use Dx\Payroll\Models\ZohoRecord;
 use Dx\Payroll\Models\ZohoRecordValue;
-use Dx\Payroll\Models\ZohoForm;
-use Dx\Payroll\Repositories\Eloquent\SectionsRepository;
-use Dx\Payroll\Repositories\RecordsInterface;
 use Dx\Payroll\Repositories\ZohoFormInterface;
 use Illuminate\Http\Request;
 use Dx\Payroll\Models\FactorMasterData;
@@ -22,8 +19,8 @@ use Dx\Payroll\Models\OverTime;
 use Dx\Payroll\Models\OverTimeSettings;
 use Dx\Payroll\Models\TaxSettings;
 use Dx\Payroll\Repositories\RedisConfigFormInterface;
-use Dx\Payroll\Http\Controllers\ZohoController;
 use Illuminate\Support\Facades\Log;
+use Dx\Payroll\Integrations\ZohoPeopleIntegration;
 
 
 class SyncDataController
@@ -33,7 +30,7 @@ class SyncDataController
     public function __construct(ZohoFormInterface $zohoForm)
     {
         $this->zohoForm = $zohoForm;
-        $this->zohoController = app(ZohoController::class);
+        $this->zohoController = ZohoPeopleIntegration::getInstance();
         $this->notSynctoLocal = [
             "monthly_form_name" => "monthly_working_time",
             "payslip_form_name" => "payslip1"];

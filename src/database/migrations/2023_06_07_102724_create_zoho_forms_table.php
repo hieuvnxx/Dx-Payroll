@@ -16,7 +16,7 @@ return new class extends Migration
     {
         Schema::create(DxServiceProvider::DX_PREFIX_TABLE.'zoho_forms', function (Blueprint $table) {
             $table->id();
-            $table->string('zoho_id', 25);
+            $table->unsignedBigInteger('zoho_id');
             $table->string('form_name', 255);
             $table->string('form_link_name', 255);
             $table->tinyInteger('status')->default(1);

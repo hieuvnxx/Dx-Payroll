@@ -9,18 +9,26 @@ use Illuminate\Support\Facades\DB;
 use Dx\Payroll\Http\Controllers\ZohoController;
 use Dx\Payroll\Models\ZohoForm;
 
-class SyncZohoForm extends Command
+class MigrateZohoForm extends Command
 {
-    protected $signature = 'dxpayroll:syncZohoForm';
+    protected $signature = 'dxpayroll:migrateZohoForm';
 
     /**
      * The console command description.
      *
      * @var string
      */
-    protected $description = 'Command sync Zoho Form to DB';
+    protected $description = 'Command to migrate first time database from zoho';
 
-    //dependency injecttion
+    protected $zohoRepo;
+
+    public function __construct(ZohoController $zohoRepo)
+    {
+        $this->zohoRepo = $zohoRepo;
+
+        parent::__construct();
+    }
+
     /**
      * Execute the console command.
      *
@@ -28,14 +36,15 @@ class SyncZohoForm extends Command
      */
     public function handle()
     {
-        $zoho = app(ZohoController::class);
-        $arrForm = $zoho->callZoho('forms', [], false);
+        //get form from zoho with api
+        $arrForm = $this->zohoRepo->callZoho('forms', [], false);
         if (!isset($arrForm['response']['result']) || empty($arrForm['response']['result'])) {
-            return $this->info('Nothing to sync!');
+            return $this->info('Error get form components!');
         }
 
         try {
             DB::beginTransaction();
+
             ZohoForm::query()->delete();
             ZohoSection::query()->delete();
             ZohoRecordField::query()->delete();
@@ -91,7 +100,11 @@ class SyncZohoForm extends Command
                 }
             }
 
-            ZohoRecordField::insert($insertZohoRecordFields);
+            //chunk to insert database
+            $insertZohoRecordFieldsChunk = array_chunk($insertZohoRecordFields, 500);
+            foreach ($insertZohoRecordFieldsChunk as $dataChunk) {
+                ZohoRecordField::insert($dataChunk);
+            }
 
             DB::commit();
             return $this->info('Successfully!');

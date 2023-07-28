@@ -2,7 +2,6 @@
 
 namespace Dx\Payroll;
 
-use DX\Payroll\Console\Commands\SyncZohoForm;
 use Dx\Payroll\Exceptions\DxHandler;
 use Illuminate\Contracts\Debug\ExceptionHandler;
 use Illuminate\Support\Facades\Route;

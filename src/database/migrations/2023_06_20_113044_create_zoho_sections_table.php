@@ -17,7 +17,7 @@ return new class extends Migration
         Schema::create(DxServiceProvider::DX_PREFIX_TABLE.'zoho_sections', function (Blueprint $table) {
             $table->id();
             $table->unsignedBigInteger('form_id'); //$table->foreignId('form_id')->constrained(DxServiceProvider::DX_PREFIX_TABLE.'zoho_forms');
-            $table->string('section_id', 255);
+            $table->unsignedBigInteger('section_id')->nullable()->default(0);
             $table->string('section_label', 255);
             $table->string('section_name', 255);
         });

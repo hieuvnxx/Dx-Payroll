@@ -21,7 +21,6 @@ class PayrollController extends BaseController
     public function __construct(RedisConfigFormInterface $redisConfigForm,
         RedisConfigFormRepository $redisControl, RecordsRepository $records)
     {
-        $this->zoho = ZohoPeopleIntegration::getInstance();
         $this->redisConfigForm = $redisConfigForm;
         $this->redisControl = $redisControl;
         $this->records = $records;
@@ -156,6 +155,8 @@ class PayrollController extends BaseController
 
     public function getLeaveWorking($config = [], $empCode = '', $startDate = '', $endDate = '')
     {
+        $this->zoho = ZohoPeopleIntegration::getInstance();
+
         $arrResponse = [];
         if (!empty($empCode)) {
             $arrData = $this->zoho->searchLeaveWorking($config['leave']['getRecords'], $empCode, $startDate, $endDate, true);
@@ -196,6 +197,8 @@ class PayrollController extends BaseController
 
     public function getOverTime($form = [], $empCode = '', $startDate = '', $endDate = '')
     {
+        $this->zoho = ZohoPeopleIntegration::getInstance();
+
         $response = [];
         if (!empty($empCode)) {
             $arrData = $this->zoho->getOvertimeByEmployee($form['getRecords'], $empCode, $startDate, $endDate);

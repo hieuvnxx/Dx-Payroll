@@ -25,12 +25,11 @@ use Dx\Payroll\Integrations\ZohoPeopleIntegration;
 
 class SyncDataController
 {
-
     protected $zohoFor, $zohoController;
+
     public function __construct(ZohoFormInterface $zohoForm)
     {
         $this->zohoForm = $zohoForm;
-        $this->zohoController = ZohoPeopleIntegration::getInstance();
         $this->notSynctoLocal = [
             "monthly_form_name" => "monthly_working_time",
             "payslip_form_name" => "payslip1"];
@@ -41,6 +40,8 @@ class SyncDataController
     }
 
     public function processSyncData(Request $arrInput){
+        $this->zohoController = ZohoPeopleIntegration::getInstance();
+
         $config = app(RedisConfigFormInterface::class)->getConfig();
         if (empty($config)){
             return $this->sendError("No have Config");
@@ -187,7 +188,11 @@ class SyncDataController
         echo 'End Sync '.$arrInput->form_name."\n";
     }
 
-    public function syncMasterData($config = []){
+    public function syncMasterData($config = [])
+    {
+
+        $this->zohoController = ZohoPeopleIntegration::getInstance();
+
         // get zoho master data
         $index = 0;
         $allMasterData = [];

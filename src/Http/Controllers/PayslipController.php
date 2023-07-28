@@ -21,12 +21,14 @@ class PayslipController extends BaseController
         $this->redisConfigForm = $redisConfigForm;
         $this->payroll = $payrollController;
         $this->repoSections = $repoSections;
-        $this->zoho = ZohoPeopleIntegration::getInstance();
         $this->records = $records;
         $this->zohoForm = $zohoForm;
     }
 
-    public function processPayslip($arrInput){
+    public function processPayslip($arrInput)
+    {
+        $this->zoho = ZohoPeopleIntegration::getInstance();
+
         $empCode    = $arrInput['code'] ?? '';
         $month      = $arrInput['month'] ?? '';
         $monthly    = str_replace('-','/', $month);

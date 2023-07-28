@@ -35,9 +35,9 @@ class ZohoOauthToken
     /**
      *  get access token zoho people
      *
-     * @return string
+     * @return mixed
      */
-    public function getAccessToken(): string
+    public function getAccessToken(): mixed
     {
         return $this->accessToken;
     }
@@ -45,9 +45,9 @@ class ZohoOauthToken
     /**
      *  get expire time access token zoho people
      *
-     * @return string
+     * @return mixed
      */
-    public function getExpireTime(): string
+    public function getExpireTime(): mixed
     {
         return $this->expireTime;
     }

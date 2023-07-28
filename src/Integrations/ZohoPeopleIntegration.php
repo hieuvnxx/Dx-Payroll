@@ -39,9 +39,9 @@ class ZohoPeopleIntegration
     /**
      *  get URL zoho people
      *
-     * @return string
+     * @return mixed
      */
-    public function getPeopleUrl(): string
+    public function getPeopleUrl(): mixed
     {
         return $this->peopleUrl;
     }

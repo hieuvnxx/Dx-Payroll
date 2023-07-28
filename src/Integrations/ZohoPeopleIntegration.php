@@ -1,119 +1,110 @@
 <?php
-namespace Dx\Payroll\Http\Controllers;
 
-use Dx\Payroll\Http\Controllers\BaseController;
-use Dx\Payroll\Repositories\Eloquent\RedisConfigFormRepository;
-use Dx\Payroll\Repositories\RefreshTokenInterface;
-use Dx\Payroll\Integrations\ZohoIntegration;
-use GuzzleHttp\Client;
-use GuzzleHttp\Exception\GuzzleException;
-use Illuminate\Support\Facades\Log;
+namespace Dx\Payroll\Integrations;
 
-
-class ZohoController extends BaseController
+class ZohoPeopleIntegration
 {
-    public $peopleUrl, $redisControl, $repoRefreshToken;
-    public function __construct(RedisConfigFormRepository $redisControl, RefreshTokenInterface $repoRefreshToken)
+    private $peopleUrl;
+    private $oauthLib;
+    private static $singletonObject;
+
+    /**
+     *  set URL zoho people
+     *
+     * @param string $url
+     * @return ZohoPeopleIntegration
+     */
+    public static function getInstance(string $url = ''): ZohoPeopleIntegration
     {
-        $this->redisControl = $redisControl;
-        $this->repoRefreshToken = $repoRefreshToken;
-        $this->peopleUrl = ZohoIntegration::getInstance();
-        $this->peopleUrl->setPeopleUrl('https://people.zoho.com/api/');
+        $url = $url ?? 'https://people.zoho.com/api/';
+        if (self::$singletonObject == null) {
+            self::$singletonObject = new static();
+            self::$singletonObject->setPeopleUrl($url);
+            self::$singletonObject->setOauthLib();
+        }
+        return self::$singletonObject;
     }
 
-    public function callZoho(string $action = '', array $parameter = [], bool $convert = true, string $method = 'POST')
+    /**
+     *  set URL zoho people
+     *
+     * @param $peopleUrl
+     * @return void
+     */
+    private function setPeopleUrl($peopleUrl): void
     {
-        /**
-         *  call api to zoho people
-         *
-         * @return array
-         */
-        $listToken = $this->getToken();
-        if (empty($listToken)) {
-            return $this->sendError('Token empty');
-        }else{
-            $token = $listToken[0]['zoho_token'];
-        }
-        $body['headers'] = [
-            'Authorization' => 'Bearer ' . $token,
+        $this->peopleUrl = $peopleUrl;
+    }
+
+    /**
+     *  get URL zoho people
+     *
+     * @return string
+     */
+    public function getPeopleUrl(): string
+    {
+        return $this->peopleUrl;
+    }
+
+    /**
+     *  set lib to generate token
+     */
+    private function setOauthLib(): void
+    {
+        $this->oauthLib = new ZohoOauthToken();
+    }
+
+    /**
+     *  get lib to generate token
+     *
+     * @return mixed
+     */
+    private function getOauthLib()
+    {
+        return $this->oauthLib;
+    }
+
+    /**
+     *  get config headers request
+     *
+     * @return array
+     */
+    private function requestHeaders(): array
+    {
+        return [
+            'Authorization' => 'Bearer ' . $this->getOauthLib()->getAccessToken(),
             'Accept' => 'application/json',
         ];
+    }
 
-        if (strtolower($method) == 'get') {
-            $typeParam = 'query';
-        } else {
-            $typeParam = 'form_params';
-        }
-        $arrParam = [];
-        if (!empty($parameter)) {
-            foreach ($parameter as $key => $value) {
-                $arrParam[$key] = $value;
-            }
-        }
-        $body[$typeParam] = $arrParam;
-        $url = $this->peopleUrl->getPeopleUrl() . $action;
+    /**
+     *  template http send request
+     *
+     * @param string $action
+     * @param array $parameter
+     * @param bool $convert
+     * @param string $method
+     * @return array
+     */
+    public function callZoho(string $action = '', array $parameter = [], bool $convert = true, string $method = 'POST'): array
+    {
+        $url = $this->getPeopleUrl() . $action;
+
+        $typeParam = (strtolower($method) == 'get') ? 'query' : 'form_params';
+
+        $body['headers']  = $this->requestHeaders();
+        $body[$typeParam] = $parameter;
+
         $response = (new Client())->request($method, $url, $body);
+
         $data = json_decode($response->getBody(), true);
         if ($convert) {
             $result = $this->convertZohoBody($data, $action);
         } else {
             $result = $data;
         }
+
         return $result;
-    }
-
-
-    /**
-     * Refresh token expired and get all tokens
-     * @return array
-     */
-    public function getToken()
-    {
-        $result = [];
-        $items = $this->repoRefreshToken->findByField('status', 1);
-        if (!empty($items)) {
-            foreach ($items as $item) {
-                $diffSecond = 3500;
-                $currentTime = date('Y-m-d H:i:s');
-                if (isset($item->last_time) && !is_null($item->last_time)) {
-                    $diffSecond = strtotime($currentTime) - strtotime($item->last_time);
-                }
-                if ($diffSecond >= 3500) {
-                    $body['refresh_token']  = $item->refresh_token;
-                    $body['client_id']      = $item->client_id;
-                    $body['client_secret']  = $item->client_secret;
-                    $body['grant_type']     = $item->grant_type;
-                    $response = $this->refreshToken($body);
-                    if (!empty($response) && isset($response['access_token'])) {
-                        $token = [
-                            'zoho_token' => $response['access_token'],
-                            'last_time'  => $currentTime
-                        ];
-                        $item->update($token);
-                        $result[] = ['zoho_token' => $response['access_token'], 'last_time' => $currentTime];
-                    }
-                } else {
-                    $result[] = ['zoho_token' => $item->zoho_token, 'last_time' => $item->last_time];
-                }
-            }
-        }
-        return $result;
-    }
-
-    /**
-     * Get new access token
-     */
-    public function refreshToken($data = [])
-    {
-        try {
-            $url  = 'https://accounts.zoho.com/oauth/v2/token';
-            $url .= '?refresh_token=' . $data['refresh_token'] . '&client_id=' . $data['client_id'] . '&client_secret=' . $data['client_secret'] . '&grant_type=' . $data['grant_type'];
-            $response = (new \GuzzleHttp\Client())->request("POST", $url, $data);
-            return json_decode($response->getBody(), true);
-        } catch (\Exception | GuzzleException $e) {
-            Log::channel('dx')->info($e->getMessage());
-            return [];
-        }
     }
 
     /**

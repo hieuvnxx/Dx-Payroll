@@ -2,11 +2,10 @@
 
 namespace Dx\Payroll\Http\Controllers;
 
-use Dx\Payroll\Http\Controllers\PayrollController;
+use Dx\Payroll\Http\Controllers\Api\BaseController;
 use Dx\Payroll\Repositories\Eloquent\RecordsRepository;
 use Dx\Payroll\Repositories\RedisConfigFormInterface;
 use Dx\Payroll\Repositories\SectionsInterface;
-use Dx\Payroll\Http\Controllers\ZohoController;
 use Dx\Payroll\Repositories\ZohoFormInterface;
 use Illuminate\Support\Facades\Log;
 

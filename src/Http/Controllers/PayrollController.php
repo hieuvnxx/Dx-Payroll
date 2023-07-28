@@ -2,17 +2,15 @@
 
 namespace Dx\Payroll\Http\Controllers;
 
-use Dx\Payroll\Http\Controllers\EmployeeController;
-use Dx\Payroll\Http\Controllers\BaseController;
+use Dx\Payroll\Http\Controllers\Api\BaseController;
+use Dx\Payroll\Jobs\MonthlyJob;
+use Dx\Payroll\Jobs\PayslipJob;
+use Dx\Payroll\Repositories\Eloquent\RecordsRepository;
+use Dx\Payroll\Repositories\Eloquent\RedisConfigFormRepository;
+use Dx\Payroll\Repositories\RedisConfigFormInterface;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Redis;
-use Dx\Payroll\Repositories\Contracts\RedisRepository;
-use Dx\Payroll\Repositories\RedisConfigFormInterface;
-use Dx\Payroll\Repositories\Eloquent\RecordsRepository;
-use Dx\Payroll\Repositories\Eloquent\RedisConfigFormRepository;
-use Dx\Payroll\Jobs\MonthlyJob;
-use Dx\Payroll\Jobs\PayslipJob;
 
 class PayrollController extends BaseController
 {

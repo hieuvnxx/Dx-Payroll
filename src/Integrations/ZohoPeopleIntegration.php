@@ -2,6 +2,10 @@
 
 namespace Dx\Payroll\Integrations;
 
+use Dx\Payroll\Integrations\ZohoOauthToken;
+use GuzzleHttp\Client;
+use GuzzleHttp\Exception\GuzzleException;
+
 class ZohoPeopleIntegration
 {
     private $peopleUrl;
@@ -14,7 +18,7 @@ class ZohoPeopleIntegration
      * @param string $url
      * @return ZohoPeopleIntegration
      */
-    public static function getInstance(string $url = ''): ZohoPeopleIntegration
+    public static function getInstance(string $url = null): ZohoPeopleIntegration
     {
         $url = $url ?? 'https://people.zoho.com/api/';
         if (self::$singletonObject == null) {
@@ -51,7 +55,7 @@ class ZohoPeopleIntegration
      */
     private function setOauthLib(): void
     {
-        $this->oauthLib = new ZohoOauthToken();
+        $this->oauthLib = ZohoOauthToken::getInstance();
     }
 
     /**

@@ -79,7 +79,7 @@ class ZohoOauthToken
                     'zoho_token' => $response['access_token'],
                     'last_time'  => $currentTime
                 ];
-                $tokenConfig->update($token);
+                RefreshToken::find($tokenConfig->id)->update($token);
 
                 $this->accessToken = $response['access_token'];
                 $this->expireTime = $diffSecond;

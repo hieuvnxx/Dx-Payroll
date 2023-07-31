@@ -13,10 +13,9 @@ return new class extends Migration
      */
     public function up()
     {
-        Schema::create(DxServiceProvider::DX_PREFIX_TABLE.'options', function (Blueprint $table) {
-            $table->char('key', 255)->primary();
-            $table->text('value')->nullable();
-            $table->dateTime('expire_time')->nullable();
+        Schema::create(DxServiceProvider::DX_PREFIX_TABLE.'payroll_formula_config', function (Blueprint $table) {
+            $table->id();
+            $table->timestamps();
         });
     }
 
@@ -27,6 +26,6 @@ return new class extends Migration
      */
     public function down()
     {
-        Schema::dropIfExists(DxServiceProvider::DX_PREFIX_TABLE.'options');
+        Schema::dropIfExists(DxServiceProvider::DX_PREFIX_TABLE.'payroll_formula_config');
     }
 };

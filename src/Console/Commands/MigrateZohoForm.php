@@ -29,6 +29,8 @@ class MigrateZohoForm extends Command
      */
     public function handle()
     {
+        $this->info(now()->toDateTimeString() . " Start: dxpayroll:migrateDateDimensionTable");
+
         $this->zohoLib = ZohoPeopleIntegration::getInstance();
 
         //get form from zoho with api
@@ -102,10 +104,10 @@ class MigrateZohoForm extends Command
             }
 
             DB::commit();
-            return $this->info('Successfully!');
+            return $this->info(now()->toDateTimeString() . " Successfully: dxpayroll:migrateDateDimensionTable");
         } catch (\Exception $e) {
             DB::rollback();
-            return $this->error('Something went wrong! ' . $e->getMessage());
+            return $this->info(now()->toDateTimeString() . " Error: dxpayroll:migrateDateDimensionTable ::: Message : " . $e->getMessage());
         }
     }
 }

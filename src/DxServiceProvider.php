@@ -11,6 +11,15 @@ class DxServiceProvider extends ServiceProvider
 {
     public const DX_PAYROLL_NAMESPACE = 'Dx\Payroll';
     public const DX_PREFIX_TABLE = 'dx_';
+    public const DX_SALARY_FORM_LINK_NAME = [
+        'monthly_working_time' => 'Monthly working time/Bảng công',
+        'payslip1'   =>  'Payslip/ Bảng lương',
+        'ot_request' =>  'OT Request/Yêu cầu làm ngoài giờ',
+        'setting'    =>  'Constant configuration/Cấu hình hằng số',
+        'form_master_data' =>  'Constant configuration/Cấu hình hằng số',
+        'factor_master_data'    =>  'Salary factor/Nhân tố lương',
+        'fomular'    =>  'Formula Source/Kho công thức',
+    ];
 
     /**
      * Register services.

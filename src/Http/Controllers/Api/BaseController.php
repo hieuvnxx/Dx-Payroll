@@ -3,7 +3,7 @@
 
 namespace Dx\Payroll\Http\Controllers;
 
-use App\Http\Controllers\Controller as Controller;
+use Dx\Payroll\Http\Controllers\Controller as Controller;
 
 
 class BaseController extends Controller

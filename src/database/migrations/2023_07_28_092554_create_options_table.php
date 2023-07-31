@@ -13,7 +13,7 @@ return new class extends Migration
      */
     public function up()
     {
-        Schema::create('options', function (Blueprint $table) {
+        Schema::create(DxServiceProvider::DX_PREFIX_TABLE.'options', function (Blueprint $table) {
             $table->char('key', 255)->index();
             $table->text('value')->nullable();
             $table->dateTime('expire_time')->nullable();

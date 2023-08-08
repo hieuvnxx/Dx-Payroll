@@ -2,12 +2,14 @@
 
 namespace Dx\Payroll\Console\Commands;
 
+use Carbon\Carbon;
+use Carbon\CarbonPeriod;
 use Dx\Payroll\Models\DateDimension;
 use Illuminate\Console\Command;
 
-class MigrateDateDimensionTable extends Command
+class MigrateDataDateDimensionTable extends Command
 {
-    protected $signature = 'dxpayroll:migrateDateDimensionTable';
+    protected $signature = 'dxpayroll:migrateDataDateDimensionTable';
 
     /**
      * The console command description.
@@ -23,7 +25,7 @@ class MigrateDateDimensionTable extends Command
      */
     public function handle()
     {
-        $this->info(now()->toDateTimeString() . " Start: dxpayroll:migrateDateDimensionTable");
+        $this->info(now()->toDateTimeString() . " Start: dxpayroll:migrateDataDateDimensionTable");
 
         // Truncate all records
         DateDimension::truncate();
@@ -35,7 +37,7 @@ class MigrateDateDimensionTable extends Command
         // @NOTE - update the start and end date as per your choice
         $dates = CarbonPeriod::create('2015-01-01', '2030-12-31');
 
-        // For each dates create a transformed data
+        // For each date create a transformed data
         foreach ($dates as $date) {
 
             // Get the quarter details, as ABC has a different quarter system
@@ -86,7 +88,7 @@ class MigrateDateDimensionTable extends Command
             DateDimension::insert($chunk->toArray());
         }
 
-        $this->info(now()->toDateTimeString() . " Complete: dxpayroll:migrateDateDimensionTable");
+        $this->info(now()->toDateTimeString() . " Complete: dxpayroll:migrateDataDateDimensionTable");
     }
 
     /**

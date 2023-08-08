@@ -5,6 +5,16 @@
  * @param string $formLinkName
  * @return string
  */
+function zoho_people_fetch_forms_path()
+{
+    return "forms";
+}
+
+/**
+ * @description this function return uri path to fetch components
+ * @param string $formLinkName
+ * @return string
+ */
 function zoho_people_form_components_path(string $formLinkName)
 {
     return "forms/$formLinkName/components";
@@ -68,4 +78,35 @@ function zoho_people_update_record_json_path(string $formLinkName)
 function zoho_people_delete_records_path()
 {
     return "deleteRecords";
+}
+
+/**
+ * @description this function return uri path to fetch components
+ * @param string $formLinkName
+ * @return string
+ */
+function zoho_people_get_attendance_by_user_path()
+{
+    return "attendance/getUserReport";
+}
+
+/**
+ * @description this function return uri path to fetch components
+ * @param string $formLinkName
+ * @return string
+ */
+function zoho_people_get_shift_configuration_path()
+{
+    return "attendance/getShiftConfiguration";
+}
+
+
+/**
+ * @description this function return uri path to fetch components
+ * @param string $formLinkName
+ * @return string
+ */
+function zoho_people_get_leave_records_path()
+{
+    return "forms/leave/getRecords";
 }

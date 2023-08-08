@@ -193,73 +193,71 @@ class ZohoPeopleIntegration
      *
      * @return array
      */
-    public function getRecordByID($id = '', $form = '')
+    public function getRecordByID($formLinkName, $id)
     {
         $body = [];
-        if($id){
-            $body['recordId'] = $id;
-        }
-        return $this->callZoho($form, $body, true);
+        if ($id) $body['recordId'] = $id;
+
+        return $this->callZoho(zoho_people_get_record_by_id_path($formLinkName), $body, true);
     }
 
-    public function getRecords($form = '', $body = [], $convert = true)
+    public function getRecords(string $formLinkName, int $index = 0, int $limit = 200, array $searchParams = [])
     {
-        $response = $this->callZoho($form, $body, $convert);
-        return $response;
+        $params['sIndex'] = $index;
+        $params['limit'] = $limit;
+
+        return $this->callZoho(zoho_people_get_records_path($formLinkName), $params);
     }
 
-    public function deleteRecords($form = '', $id = '', $convert = true)
+    public function deleteRecords($form, $id)
     {
-        $url    = 'deleteRecords';
         $body['recordIds'] = $id;
         $body['formLinkName'] = $form;
-        $response = $this->callZoho($url, $body);
-        return $response;
+
+        return $this->callZoho(zoho_people_delete_records_path(), $body);
     }
 
     /**
      *  Lấy danh sách zoho form
      * @return array
      */
-    public function getSectionForm(string $form = '', $version = 2, bool $convert = true): array
+    public function getSectionForm(string $formLinkName, $version = 2, bool $convert = true): array
     {
         $body = [];
-        if ($version) {
-            $body['version'] = 2;
-        }
-        return $this->callZoho($form,  $body, $convert);
+
+        if ($version) $body['version'] = 2;
+
+        return $this->callZoho(zoho_people_form_components_path($formLinkName),  $body, $convert);
     }
 
     /**
      * Lấy attendance trong kỳ lương
      * @return array
      */
-    public function getAttendanceByEmployee($form = '', $empCode = '', $startDate = '', $endDate = '')
+    public function getAttendanceByEmployee($empCode = '', $startDate = '', $endDate = '')
     {
-        $response = [];
         $bodyAttendance = [
             'sdate' => date('d-m-Y', strtotime($startDate)),
             'edate' => date('d-m-Y', strtotime($endDate)),
             'empId' => $empCode,
             'dateFormat' => 'dd-MM-yyyy'
         ];
-        $response = $this->callZoho($form, $bodyAttendance, false);
-        ksort($response);
-        return $response;
+
+        return $this->callZoho(zoho_people_get_attendance_by_user_path(), $bodyAttendance, false);
     }
 
     /*
      * Thông tin các ngày cuối tuần, lễ ...
      */
-    public function getShiftConfigurationByEmployee($form = '', $empCode = '', $startDate = '', $endDate = '', $dataPunch = [])
+    public function getShiftConfigurationByEmployee($empCode = '', $startDate = '', $endDate = '', $dataPunch = [])
     {
-        $response = [];
         $bodyShift = [
             'sdate' => $startDate,
             'edate' => $endDate,
             'empId' => $empCode,
         ];
-        $result = $this->callZoho($form, $bodyShift, true);
+
+        $result = $this->callZoho(zoho_people_get_shift_configuration_path(), $bodyShift, true);
         if(!empty($result['userShiftDetails']['shiftList'])){
             foreach ($result['userShiftDetails']['shiftList'] as $item){
                 if(!empty($dataPunch)){
@@ -271,54 +269,47 @@ class ZohoPeopleIntegration
                     }
                 }
             }
-            ksort($response);
         }
+
         return $response;
     }
 
     /*
      * Get leave details of an employee
      */
-    public function searchLeaveWorking($form, $employeeId = '', $fromDate = '', $toDate = '', $convert = true)
+    public function searchLeaveWorking($employeeId = '', $fromDate = '', $toDate = '', $convert = true)
     {
         $body       = [];
         $fromDate   = date('Y-m-d', strtotime($fromDate));
         $toDate     = date('Y-m-d', strtotime($toDate));
         $body['searchParams'] = "{searchField: 'From', searchOperator: 'Before', searchCriteria: 'AND', searchText : " . "'" . $toDate . "'" . "} | {searchField: 'To', searchOperator: 'After', searchCriteria: 'AND', searchText : " . "'" . $fromDate . "'" . "} | {searchField: 'Employee_ID', searchOperator: 'Like', searchText : " . "'" . $employeeId . "'" . "} ";
-        return $this->callZoho($form, $body, $convert);
+        
+        return $this->callZoho(zoho_people_get_leave_records_path(), $body, $convert);
     }
 
-    public function getOvertimeByEmployee($form, $empCode = '', $startDate = '', $endDate = '')
-    {
-        $startDate   = date('Y-m-d', strtotime($startDate));
-        $endDate     = date('Y-m-d', strtotime($endDate));
-        $body["searchParams"] = "{searchField: 'AddedBy', searchOperator: 'Contains', searchText : '" . $empCode . "'} | {searchField: 'date', searchOperator: 'Between', searchText : '" . $startDate . ";" . $endDate . "'}";
-        return $this->callZoho($form, $body);
-    }
-
-    public function searchPayroll($form, $code = '')
-    {
-        $body['searchParams'] = "{searchField: 'code', searchOperator: 'Is', searchText : " . "'" . $code . "'" . "}";
-        return $this->callZoho($form, $body, true);
-    }
-
-    public function createdOrUpdated($form = '', $data = [], $tabular = [], $zohoId = '',  $formatDate = '')
+    public function insertRecord($formLinkName, $inputData = [], $zohoId = '',  $formatDate = '')
     {
         $body = [];
-        if($zohoId){
-            $body['recordId'] = $zohoId;
-        }
-        if(!empty($data)){
-            $body['inputData'] = json_encode($data, JSON_UNESCAPED_UNICODE);
-        }
-        if(!empty($tabular)){
-            $body['tabularData'] = json_encode($tabular, JSON_UNESCAPED_UNICODE);
-        }
-        if($formatDate){
-            $body['dateFormat'] = $formatDate;
-        }
+        if ($zohoId) $body['recordId'] = $zohoId;
 
-        $resault = $this->callZoho($form, $body, true);
-        return $resault;
+        if (!empty($inputData)) $body['inputData'] = json_encode($inputData, JSON_UNESCAPED_UNICODE);
+
+        if ($formatDate) $body['dateFormat'] = $formatDate;
+
+        return $this->callZoho(zoho_people_insert_record_json_path($formLinkName), $body, true);
+    }
+
+    public function updateRecord($formLinkName, $inputData = [], $tabularData = [], $zohoId = '',  $formatDate = '')
+    {
+        $body = [];
+        if ($zohoId) $body['recordId'] = $zohoId;
+
+        if (!empty($inputData)) $body['inputData'] = json_encode($inputData, JSON_UNESCAPED_UNICODE);
+
+        if (!empty($tabular)) $body['tabularData'] = json_encode($tabular, JSON_UNESCAPED_UNICODE);
+
+        if ($formatDate) $body['dateFormat'] = $formatDate;
+
+        return $this->callZoho(zoho_people_update_record_json_path($formLinkName), $body, true);
     }
 }

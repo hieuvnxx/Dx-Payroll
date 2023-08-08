@@ -29,7 +29,6 @@
         "phpunit/phpunit": "^9.5",
         "prettus/l5-repository": "^2.9",
         "predis/predis": "^2.1",
-        "laravel/horizon": "^5.16",
         "laravel/sanctum": "^3.2"
     },
     "extra": {

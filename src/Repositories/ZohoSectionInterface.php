@@ -9,7 +9,13 @@ use Prettus\Repository\Contracts\RepositoryInterface;
  *
  * @package namespace App\Repositories;
  */
-interface RefreshTokenInterface extends RepositoryInterface
+interface ZohoSectionInterface extends RepositoryInterface
 {
+    /**
+     * Get config from form
+     * @param
+     * @return mixed
+     */
+    public function getSectionID($sectioName);
 
 }

@@ -12,14 +12,6 @@ use Prettus\Repository\Contracts\RepositoryInterface;
 interface ZohoFormInterface extends RepositoryInterface
 {
     /**
-     * Get config from form
-     * @param
-     * @return mixed
-     */
-    public function formatFormConfig();
-
-
-    /**
      * Get field of form
      * @param
      * @return mixed

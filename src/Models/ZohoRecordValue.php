@@ -25,4 +25,29 @@ class ZohoRecordValue extends Model
     public function records(){
         return $this->belongsTo(ZohoRecordValue::class,'id', 'record_id');
     }
+
+    public static function createOrUpdateZohoRecordValue($attributes, $zohoRecord, $zohoData, $rowId = 0)
+    {
+        $arrayKeys = array_keys($zohoData);
+
+        foreach ($arrayKeys as $fieldLabel) {
+            if (isset($attributes[$fieldLabel])) {
+                if ($attributes[$fieldLabel]->type == "Lookup") {
+                    $value = $zohoData[$fieldLabel.'.ID'] ?? $zohoData[$fieldLabel.'.id'] ?? $zohoData[$fieldLabel];
+                } else {
+                    $value = $zohoData[$fieldLabel];
+                }
+
+                ZohoRecordValue::updateOrCreate(
+                    [
+                        'record_id' => $zohoRecord->id,
+                        'field_id' => $attributes[$fieldLabel]->id,
+                        'row_id' => $rowId
+                    ],[
+                        'value' => $value,
+                    ]
+                );
+            }
+        }
+    }
 }

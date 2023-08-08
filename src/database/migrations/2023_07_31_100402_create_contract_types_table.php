@@ -1,9 +1,9 @@
 <?php
 
+use Dx\Payroll\DxServiceProvider;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
-use Dx\Payroll\DxServiceProvider;
 
 return new class extends Migration
 {
@@ -14,8 +14,10 @@ return new class extends Migration
      */
     public function up()
     {
-        Schema::create(DxServiceProvider::DX_PREFIX_TABLE.'payroll_formula_config', function (Blueprint $table) {
+        Schema::create(DxServiceProvider::DX_PREFIX_TABLE.'contract_types', function (Blueprint $table) {
             $table->id();
+            $table->unsignedBigInteger('zoho_id')->nullable();
+            $table->string('name');
             $table->timestamps();
         });
     }
@@ -27,6 +29,6 @@ return new class extends Migration
      */
     public function down()
     {
-        Schema::dropIfExists(DxServiceProvider::DX_PREFIX_TABLE.'payroll_formula_config');
+        Schema::dropIfExists(DxServiceProvider::DX_PREFIX_TABLE.'contract_types');
     }
 };

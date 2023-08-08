@@ -22,6 +22,13 @@ class MigrateZohoForm extends Command
 
     protected $zohoLib;
 
+    public function __construct()
+    {
+        parent::__construct();
+
+        $this->zohoLib = ZohoPeopleIntegration::getInstance();
+    }
+
     /**
      * Execute the console command.
      *
@@ -29,12 +36,10 @@ class MigrateZohoForm extends Command
      */
     public function handle()
     {
-        $this->info(now()->toDateTimeString() . " Start: dxpayroll:migrateDateDimensionTable");
-
-        $this->zohoLib = ZohoPeopleIntegration::getInstance();
+        $this->info(now()->toDateTimeString() . " Start: dxpayroll:migrateZohoForm");
 
         //get form from zoho with api
-        $arrForm = $this->zohoLib->callZoho('forms', [], false);
+        $arrForm = $this->zohoLib->callZoho(zoho_people_fetch_forms_path(), [], false);
         if (!isset($arrForm['response']['result']) || empty($arrForm['response']['result'])) {
             return $this->info('Error get form components!');
         }
@@ -55,7 +60,7 @@ class MigrateZohoForm extends Command
                     'status' => $form["isVisible"] ? 1 : 0
                 ]);
 
-                $arrComp = $this->zohoLib->getSectionForm('forms/'.$form['formLinkName'].'/components', 2, false);
+                $arrComp = $this->zohoLib->getSectionForm($form['formLinkName'], 2, false);
                 if (!isset($arrComp['response']['result']) || empty($arrComp['response']['result'])) {
                     continue;
                 }
@@ -104,10 +109,10 @@ class MigrateZohoForm extends Command
             }
 
             DB::commit();
-            return $this->info(now()->toDateTimeString() . " Successfully: dxpayroll:migrateDateDimensionTable");
+            return $this->info(now()->toDateTimeString() . " Successfully: dxpayroll:migrateZohoForm");
         } catch (\Exception $e) {
             DB::rollback();
-            return $this->info(now()->toDateTimeString() . " Error: dxpayroll:migrateDateDimensionTable ::: Message : " . $e->getMessage());
+            return $this->info(now()->toDateTimeString() . " Error: dxpayroll:migrateZohoForm ::: Message : " . $e->getMessage());
         }
     }
 }

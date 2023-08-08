@@ -12,13 +12,40 @@ class DxServiceProvider extends ServiceProvider
     public const DX_PAYROLL_NAMESPACE = 'Dx\Payroll';
     public const DX_PREFIX_TABLE = 'dx_';
     public const DX_SALARY_FORM_LINK_NAME = [
-        'monthly_working_time' => 'Monthly working time/Bảng công',
-        'payslip1'   =>  'Payslip/ Bảng lương',
-        'ot_request' =>  'OT Request/Yêu cầu làm ngoài giờ',
-        'setting'    =>  'Constant configuration/Cấu hình hằng số',
-        'form_master_data' =>  'Constant configuration/Cấu hình hằng số',
-        'factor_master_data'    =>  'Salary factor/Nhân tố lương',
-        'fomular'    =>  'Formula Source/Kho công thức',
+        'monthly_working_time' => [
+            'label' => 'monthly_working_time',
+            'name'  => 'Monthly working time/Bảng công',
+        ],
+
+        'payslip'   => [
+            'label' => 'payslip1',
+            'name'  => 'Payslip/ Bảng lương',
+        ],
+
+        'overtime_request' => [
+            'label' => 'ot_request',
+            'name'  => 'OT Request/Yêu cầu làm ngoài giờ',
+        ],
+
+        'constant_configuration' => [
+            'label' => 'setting',
+            'name'  => 'Constant configuration/Cấu hình hằng số',
+        ],
+
+        'form_master_data' => [
+            'label' => 'form_master_data',
+            'name'  => 'Constant configuration/Cấu hình hằng số',
+        ],
+
+        'factor_master_data' => [
+            'label' => 'factor_master_data',
+            'name'  => 'Salary factor/Nhân tố lương',
+        ],
+
+        'formula' => [
+            'label' => 'fomular',
+            'name'  => 'Formula Source/Kho công thức',
+        ]
     ];
 
     /**
@@ -41,11 +68,9 @@ class DxServiceProvider extends ServiceProvider
         $this->loadCommands();
 
         $this->app->singleton(ExceptionHandler::class,DxHandler::class);
-        $this->app->bind(\Dx\Payroll\Repositories\RefreshTokenInterface::class,\Dx\Payroll\Repositories\Eloquent\RefreshTokenRepository::class);
         $this->app->bind(\Dx\Payroll\Repositories\ZohoFormInterface::class,\Dx\Payroll\Repositories\Eloquent\ZohoFormRepository::class);
-        $this->app->bind(\Dx\Payroll\Repositories\RedisConfigFormInterface::class,\Dx\Payroll\Repositories\Eloquent\RedisConfigFormRepository::class);
-        $this->app->bind(\Dx\Payroll\Repositories\RecordsInterface::class,\Dx\Payroll\Repositories\Eloquent\RecordsRepository::class);
-        $this->app->bind(\Dx\Payroll\Repositories\SectionsInterface::class,\Dx\Payroll\Repositories\Eloquent\SectionsRepository::class);
+        $this->app->bind(\Dx\Payroll\Repositories\ZohoRecordInterface::class,\Dx\Payroll\Repositories\Eloquent\ZohoRecordRepository::class);
+        $this->app->bind(\Dx\Payroll\Repositories\ZohoSectionInterface::class,\Dx\Payroll\Repositories\Eloquent\ZohoSectionRepository::class);
 
         $this->loadRoutesFrom(__DIR__.'/routes/web.php');
 

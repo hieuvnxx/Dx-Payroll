@@ -6,6 +6,7 @@ class Option
 {
     private static $cacheOption;
     private static $redisOption;
+    
     public function __construct()
     {
         static::$cacheOption = env('DX_CACHE_OPTION', false);

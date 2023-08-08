@@ -20,4 +20,9 @@ class ZohoSection extends Model
         'section_name',
         'section_label',
     ];
+
+    public function attributes() 
+    {
+        return $this->hasMany(ZohoRecordField::class, 'section_id', 'id');
+    }
 }

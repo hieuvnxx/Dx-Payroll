@@ -9,19 +9,17 @@ use Prettus\Repository\Contracts\RepositoryInterface;
  *
  * @package namespace App\Repositories;
  */
-interface RecordsInterface extends RepositoryInterface
+interface ZohoRecordInterface extends RepositoryInterface
 {
     public function deleteRecords($formName, $ZohoID);
 
-    public function getRecords($formName = '', $offset = '', $limit = '');
+    public function getRecords($formName, $offset = 0, $limit = 200);
 
-    public function getRecordByID($formName = '', $ZohoID = '');
+    public function getRecordByZohoID($formName, $ZohoID);
 
     public function searchRecords($formName = '', $field = '', $value = null);
 
-    public function formatRecords($zohoForm = '', $data = []);
+    public function formatRecords($data);
 
     public function castValue($type, $value);
-
-    public function getSectionID($formName, $sectionName);
 }

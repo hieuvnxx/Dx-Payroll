@@ -3,19 +3,16 @@
 namespace Dx\Payroll\Repositories\Eloquent;
 
 use Dx\Payroll\Models\ZohoRecord;
-use Dx\Payroll\Repositories\ValuesInterface;
-use PhpParser\Node\Expr\AssignOp\Mod;
 use Prettus\Repository\Eloquent\BaseRepository;
-use Prettus\Repository\Criteria\RequestCriteria;
 use Dx\Payroll\Repositories\ZohoFormInterface;
-use Illuminate\Support\Facades\DB;
+use Dx\Payroll\Repositories\ZohoRecordInterface;
 
 /**
  * Class EmployeeRepository.
  *
  * @package namespace App\Repositories;
  */
-class RecordsRepository extends BaseRepository implements ValuesInterface
+class ZohoRecordRepository extends BaseRepository implements ZohoRecordInterface
 {
     /**
      * Specify Model class name
@@ -27,6 +24,11 @@ class RecordsRepository extends BaseRepository implements ValuesInterface
         return ZohoRecord::class;
     }
 
+    /**
+     * Delete records
+     * @param
+     * @return mixed
+     */
     public function deleteRecords($formName, $ZohoID)
     {
         return $this->deleteWhere(['form_id' => $formName, 'zoho_id'=> $ZohoID]);
@@ -34,55 +36,48 @@ class RecordsRepository extends BaseRepository implements ValuesInterface
 
     /**
      * Get records
-     * @param
      * @return mixed
      */
-    public function getRecords($formName = '', $offset = '', $limit = ''){
+    public function getRecords($formName, $offset = 0, $limit = 200)
+    {
         $response = [];
 
-        $zohoForm = app(ZohoFormInterface::class)->findByField('form_link_name', $formName);
-        if($zohoForm->isEmpty()){
-            return "Missing Form Name";
+        $zohoForm = $this->getFormByFormName($formName);
+        if ($zohoForm->isEmpty()) {
+            throw new \ErrorException('Not found form name in database');
         }
 
-        if(empty($offset)){
-            $offset = 0;
-        }
-        if(empty($limit)){
-            $limit = 200;
-        }
-        $response = $this->where('dx_zoho_records.form_id', $zohoForm[0]->id)
+        $zohoForm = $zohoForm[0];
+
+        $response = $this->where('dx_zoho_records.form_id', $zohoForm->id)
             ->with(['values' => function ($query) {
             $query->join('dx_zoho_record_fields', 'dx_zoho_record_fields.id', '=', 'field_id')
                 ->join('dx_zoho_sections', 'dx_zoho_sections.id', '=', 'dx_zoho_record_fields.section_id', 'left outer');
         }])->skip($offset)->take($limit)->get();
 
-        return $this->formatRecords($zohoForm[0], $response);
+        return $this->formatRecords($response);
     }
 
     /**
-     * Get one record
-     * @param
+     * Get one record by zoho ID
      * @return mixed
      */
-    public function getRecordByID($formName = '', $ZohoID = ''){
-        $response = [];
-        $zohoForm = app(ZohoFormInterface::class)->findByField('form_link_name', $formName);
+    public function getRecordByZohoID($formName, $ZohoID)
+    {
+        $zohoForm = $this->getFormByFormName($formName);
         if($zohoForm->isEmpty()){
-            return "Missing Form Name";
+            throw new \ErrorException('Not found form name in database');
         }
 
-        if(empty($ZohoID)){
-            return "Missing Zoho ID";
-        }
+        $zohoForm = $zohoForm[0];
 
-        $response = $this->where('dx_zoho_records.form_id', $zohoForm[0]->id)->where('dx_zoho_records.zoho_id', $ZohoID)
+        $response = $this->where('dx_zoho_records.form_id', $zohoForm->id)->where('dx_zoho_records.zoho_id', $ZohoID)
             ->with(['values' => function ($query) {
                 $query->join('dx_zoho_record_fields', 'dx_zoho_record_fields.id', '=', 'field_id')
                     ->join('dx_zoho_sections', 'dx_zoho_sections.id', '=', 'dx_zoho_record_fields.section_id', 'left outer');
             }])->get();
 
-        return $this->formatRecords($zohoForm[0], $response);
+        return $this->formatRecords($response);
     }
 
     /**
@@ -90,12 +85,13 @@ class RecordsRepository extends BaseRepository implements ValuesInterface
      * @param
      * @return mixed
      */
-    public function formatRecords($zohoForm = '', $datas = []){
+    public function formatRecords($origin)
+    {
         $response = [];
-        if (empty($datas)) return $response;
+        if (empty($origin)) return $response;
 
         $index = 0;
-        foreach ($datas as $data){
+        foreach ($origin as $data){
             foreach ($data->values as $val){
                 $response[$index]['Zoho_ID'] = $data->zoho_id;
                 $response[$index][$val->field_label] = $this->castValue($val->type, $val->value);
@@ -114,7 +110,8 @@ class RecordsRepository extends BaseRepository implements ValuesInterface
      * @param
      * @return mixed
      */
-    public function searchRecords($formName = '', $field = '', $value = null){
+    public function searchRecords($formName = '', $field = '', $value = null)
+    {
         $response = [];
         $zohoForm = app(ZohoFormInterface::class)->findByField('form_link_name', $formName);
         if($zohoForm->isEmpty()){
@@ -142,6 +139,9 @@ class RecordsRepository extends BaseRepository implements ValuesInterface
                 return $value;
         }
     }
-
-
+    
+    private function getFormByFormName($formName)
+    {
+        return app(ZohoFormInterface::class)->findByField('form_link_name', $formName);
+    }
 }

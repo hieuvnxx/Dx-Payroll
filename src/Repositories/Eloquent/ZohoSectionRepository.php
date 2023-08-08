@@ -3,16 +3,15 @@
 namespace Dx\Payroll\Repositories\Eloquent;
 
 use Dx\Payroll\Models\ZohoSection;
-use Dx\Payroll\Repositories\SectionsInterface;
+use Dx\Payroll\Repositories\ZohoSectionInterface;
 use Prettus\Repository\Eloquent\BaseRepository;
-use Prettus\Repository\Criteria\RequestCriteria;
 
 /**
  * Class EmployeeRepository.
  *
  * @package namespace App\Repositories;
  */
-class SectionsRepository extends BaseRepository implements SectionsInterface
+class ZohoSectionRepository extends BaseRepository implements ZohoSectionInterface
 {
 
     /**

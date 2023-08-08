@@ -23,12 +23,18 @@ class ZohoForm extends Model
         'status',
     ];
 
-    public function formSection(){
-        return $this->hasMany(ZohoSection::class,'form_id', 'id');
+    public function sections()
+    {
+        return $this->hasMany(ZohoSection::class, 'form_id', 'id');
     }
 
-    public function attribute(){
-        return $this->hasMany(ZohoRecordField::class,'form_id', 'id');
+    public function attributes() 
+    {
+        return $this->hasMany(ZohoRecordField::class, 'form_id', 'id')->where('section_id', 0);
     }
 
+    public function sectionAttributes() 
+    {
+        return $this->hasMany(ZohoRecordField::class, 'form_id', 'id')->where('section_id', '!=', 0);
+    }
 }

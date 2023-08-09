@@ -95,6 +95,36 @@ function zoho_people_get_attendance_by_user_path()
  * @param string $formLinkName
  * @return string
  */
+function zoho_people_get_attendance_by_entries_path()
+{
+    return "attendance/getAttendanceEntries";
+}
+
+/**
+ * @description this function return uri path to fetch components
+ * @param string $formLinkName
+ * @return string
+ */
+function zoho_people_attendance_bulk_import_path()
+{
+    return "attendance/bulkImport";
+}
+
+/**
+ * @description this function return uri path to fetch components
+ * @param string $formLinkName
+ * @return string
+ */
+function zoho_people_attendance_get_regularization_records_path()
+{
+    return "attendance/getRegularizationRecords";
+}
+
+/**
+ * @description this function return uri path to fetch components
+ * @param string $formLinkName
+ * @return string
+ */
 function zoho_people_get_shift_configuration_path()
 {
     return "attendance/getShiftConfiguration";
@@ -106,7 +136,7 @@ function zoho_people_get_shift_configuration_path()
  * @param string $formLinkName
  * @return string
  */
-function zoho_people_get_leave_records_path()
+function zoho_people_get_holidays_path()
 {
-    return "forms/leave/getRecords";
+    return "leave/v2/holidays/get";
 }

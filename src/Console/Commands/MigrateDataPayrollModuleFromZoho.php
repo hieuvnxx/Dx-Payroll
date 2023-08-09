@@ -2,10 +2,12 @@
 
 namespace Dx\Payroll\Console\Commands;
 
+use Illuminate\Support\Env;
 use Illuminate\Console\Command;
 use Dx\Payroll\Integrations\ZohoPeopleIntegration;
+use Dx\Payroll\Jobs\ProcessSyncDataFormLinkName;
 use Dx\Payroll\Repositories\ZohoFormInterface;
-use Illuminate\Support\Env;
+use Dx\Payroll\Repositories\ZohoRecordInterface;
 
 class MigrateDataPayrollModuleFromZoho extends Command
 {
@@ -19,15 +21,16 @@ class MigrateDataPayrollModuleFromZoho extends Command
     protected $description = 'generate payroll module zoho form';
 
     protected $zohoLib;
-
     protected $zohoForm;
+    protected $zohoRecord;
 
-    public function __construct(ZohoFormInterface $zohoForm)
+    public function __construct(ZohoFormInterface $zohoForm, ZohoRecordInterface $zohoRecord)
     {
         parent::__construct();
         
         $this->zohoLib = ZohoPeopleIntegration::getInstance();
         $this->zohoForm = $zohoForm;
+        $this->zohoRecord = $zohoRecord;
     }
 
     /**
@@ -39,98 +42,38 @@ class MigrateDataPayrollModuleFromZoho extends Command
     {
         $this->info(now()->toDateTimeString() . " Start: dxpayroll:migrateDataPayrollModuleFromZoho");
 
+        $modulePayrollFormLinkNames = [
+            'PAYROLL_PAYSLIP_FORM_LINK_NAME' => Env::get('PAYROLL_PAYSLIP_FORM_LINK_NAME', null),
+            'PAYROLL_MONTHY_WORKING_TIME_FORM_LINK_NAME' => Env::get('PAYROLL_MONTHY_WORKING_TIME_FORM_LINK_NAME', null),
+            'PAYROLL_OT_REQUEST_FORM_LINK_NAME' => Env::get('PAYROLL_OT_REQUEST_FORM_LINK_NAME', null),
+            'PAYROLL_CONSTANT_CONFIGURATION_FORM_LINK_NAME' => Env::get('PAYROLL_CONSTANT_CONFIGURATION_FORM_LINK_NAME', null),
+            'PAYROLL_FORM_MASTER_DATA_FORM_LINK_NAME' => Env::get('PAYROLL_FORM_MASTER_DATA_FORM_LINK_NAME', null),
+            'PAYROLL_FACTOR_MASTER_DATA_FORM_LINK_NAME' => Env::get('PAYROLL_FACTOR_MASTER_DATA_FORM_LINK_NAME', null),
+            'PAYROLL_FORMULA_SOURCE_DATA_FORM_LINK_NAME' => Env::get('PAYROLL_FORMULA_SOURCE_DATA_FORM_LINK_NAME', null),
+        ];
+
+        foreach ($modulePayrollFormLinkNames as $envKey => $formLinkName) {
+            $this->migrateFormData($envKey, $formLinkName);
+        }
+
         return $this->info(now()->toDateTimeString() . " Successfully: dxpayroll:migrateDataPayrollModuleFromZoho");
     }
 
-    /**
-    * Department
+   /**
+    * payroll module
     */
-    private function migrateDepartmentData()
+    private function migrateFormData($envKey, $formLinkName)
     {
-        $departmentFormLinkName = Env::get('DEPARTMENT_FORM_LINK_NAME', null);
-        if (is_null($departmentFormLinkName)) {
-            return $this->info(now()->toDateTimeString() . " Error: dxpayroll:migrateDataOrganizationFromZoho ::: DEPARTMENT_FORM_LINK_NAME env not config");
+        if (is_null($formLinkName)) {
+            throw new \ErrorException($envKey . ' env not config');
         }
 
-        $departmentForm = $this->zohoForm->with(['sections', 'attributes', 'sections.attributes'])->where('form_link_name', $departmentFormLinkName)->get();
-        if ($departmentForm->isEmpty()) {
-            return $this->info(now()->toDateTimeString() . " Error: dxpayroll:migrateDataOrganizationFromZoho ::: $departmentFormLinkName env not generate in database");
+        $cloneZohoFormInterface = clone $this->zohoForm;
+        $zohoForm = $cloneZohoFormInterface->with(['sections', 'attributes', 'sections.attributes'])->where('form_link_name', $formLinkName)->first();
+        if (is_null($zohoForm)) {
+            throw new \ErrorException('Not found '.$formLinkName.' in database');
         }
 
-        $departmentForm = $departmentForm[0];
-
-        $index = 1;
-        $offset = 200;
-        while (true) {
-            $departmentRecords         = $this->zohoLib->getRecords($departmentFormLinkName, $index, $offset);
-
-            if (empty($departmentRecords) || isset($departmentRecords['errors']) || (isset($departmentRecords['status']) && $departmentRecords['status'] != 0)) break;
-
-            foreach ($departmentRecords as $employee) {
-                $zohoRecord = ZohoRecord::updateOrCreate(['form_id' => $departmentForm->id, 'zoho_id' => (string)$employee['Zoho_ID']]);
-
-                $zohoFormSections = $departmentForm->sections->keyBy('section_name');
-                if (!empty($employee['tabularSections'])) {
-                    foreach ($employee['tabularSections'] as $tabularName => $values) {
-                        if (!isset($zohoFormSections[$tabularName]) || empty($values[0])) continue;
-
-                        foreach ($values as $value) {
-                            ZohoRecordValue::createOrUpdateZohoRecordValue($zohoFormSections[$tabularName]->attributes->keyBy('field_label'), $zohoRecord, $value, $value['tabular.ROWID']);
-                        }
-                    }
-                    unset($employee['tabularSections']);
-                }
-
-                ZohoRecordValue::createOrUpdateZohoRecordValue($departmentForm->attributes->keyBy('field_label'), $zohoRecord, $employee);
-            }
-
-            $index += $offset;
-        }
-    }
-
-    /**
-    * Employee
-    */
-    private function migrateEmployeeData()
-    {
-        $employeeFormLinkName = Env::get('EMPLOYEE_FORM_LINK_NAME', null);
-        if (is_null($employeeFormLinkName)) {
-            return $this->info(now()->toDateTimeString() . " Error: dxpayroll:migrateDataOrganizationFromZoho ::: EMPLOYEE_FORM_LINK_NAME env not config");
-        }
-
-        $employeeForm = $this->zohoForm->with(['sections', 'attributes', 'sections.attributes'])->where('form_link_name', $employeeFormLinkName)->get();
-        if ($employeeForm->isEmpty()) {
-            return $this->info(now()->toDateTimeString() . " Error: dxpayroll:migrateDataOrganizationFromZoho ::: $employeeFormLinkName env not generate in database");
-        }
-
-        $employeeForm = $employeeForm[0];
-
-        $index = 1;
-        $offset = 200;
-        while (true) {
-            $employeeRecords         = $this->zohoLib->getRecords($employeeFormLinkName, $index, $offset);
-
-            if (empty($employeeRecords) || isset($employeeRecords['errors']) || (isset($employeeRecords['status']) && $employeeRecords['status'] != 0)) break;
-
-            foreach ($employeeRecords as $employee) {
-                $zohoRecord = ZohoRecord::updateOrCreate(['form_id' => $employeeForm->id, 'zoho_id' => (string)$employee['Zoho_ID']]);
-
-                $zohoFormSections = $employeeForm->sections->keyBy('section_name');
-                if (!empty($employee['tabularSections'])) {
-                    foreach ($employee['tabularSections'] as $tabularName => $values) {
-                        if (!isset($zohoFormSections[$tabularName]) || empty($values[0])) continue;
-
-                        foreach ($values as $value) {
-                            ZohoRecordValue::createOrUpdateZohoRecordValue($zohoFormSections[$tabularName]->attributes->keyBy('field_label'), $zohoRecord, $value, $value['tabular.ROWID']);
-                        }
-                    }
-                    unset($employee['tabularSections']);
-                }
-
-                ZohoRecordValue::createOrUpdateZohoRecordValue($employeeForm->attributes->keyBy('field_label'), $zohoRecord, $employee);
-            }
-
-            $index += $offset;
-        }
+        ProcessSyncDataFormLinkName::dispatch($formLinkName, $zohoForm);
     }
 }

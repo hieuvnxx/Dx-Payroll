@@ -10,5 +10,6 @@ return [
         'level' => 'debug',
         'path' => storage_path('logs/payroll.log'),
         'days' => 45,
+        'permissions' => 0777
     ],
 ];

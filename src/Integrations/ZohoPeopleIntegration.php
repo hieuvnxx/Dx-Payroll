@@ -284,7 +284,7 @@ class ZohoPeopleIntegration
         $toDate     = date('Y-m-d', strtotime($toDate));
         $body['searchParams'] = "{searchField: 'From', searchOperator: 'Before', searchCriteria: 'AND', searchText : " . "'" . $toDate . "'" . "} | {searchField: 'To', searchOperator: 'After', searchCriteria: 'AND', searchText : " . "'" . $fromDate . "'" . "} | {searchField: 'Employee_ID', searchOperator: 'Like', searchText : " . "'" . $employeeId . "'" . "} ";
         
-        return $this->callZoho(zoho_people_get_leave_records_path(), $body, $convert);
+        return $this->callZoho(zoho_people_get_records_path('leave'), $body, $convert);
     }
 
     public function insertRecord($formLinkName, $inputData = [], $zohoId = '',  $formatDate = '')

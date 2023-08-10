@@ -1,11 +1,13 @@
 <?php
 
 
-namespace Dx\Payroll\Http\Controllers;
+namespace Dx\Payroll\Http\Controllers\Api;
 
 use Dx\Payroll\Http\Controllers\Controller as Controller;
 
-
+/**
+ * Base function for API Controller 
+ */
 class BaseController extends Controller
 {
     /**
@@ -13,17 +15,16 @@ class BaseController extends Controller
      *
      * @return \Illuminate\Http\Response
      */
-    public function sendResponse($result, $message)
+    public function sendResponse($request, $message, $details = [], $code = 200)
     {
-        $response = [
+        return response()->json([
             'response' => [
-                'success' => true,
-                'data'    => $result,
-                'message' => $message,
+                'result' => $details,
             ],
-            'code' => 200
-        ];
-        return response()->json($response, 200);
+            "uri" => $request->path(),
+            'message' => !empty($message) ? $message : "Successfully.",
+            'status' => 0,
+        ], $code);
     }
 
 
@@ -32,20 +33,17 @@ class BaseController extends Controller
      *
      * @return \Illuminate\Http\Response
      */
-    public function sendError($error, $errorMessages = [], $code = 404)
+    public function sendError($request, $message, $details = [], $code = 404)
     {
-        $response = [
-            'response' => [
-                'success' => false,
-                'message' => $error,
+        return response()->json([
+            'message' => "Error occurred.",
+            "uri" => $request->path(),
+            'errors' => [
+                'code' => $code,
+                'message' => !empty($message) ? "Error occurred. $message" : "Error occurred.",
+                'details' => $details,
             ],
-            'code' => $code
-        ];
-
-        if(!empty($errorMessages)){
-            $response['data'] = $errorMessages;
-        }
-
-        return response()->json($response, $code);
+            'status' => 1,
+        ], $code);
     }
 }

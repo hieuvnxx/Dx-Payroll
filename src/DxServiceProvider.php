@@ -4,8 +4,6 @@ namespace Dx\Payroll;
 
 use Dx\Payroll\Exceptions\DxHandler;
 use Illuminate\Contracts\Debug\ExceptionHandler;
-use Illuminate\Support\Env;
-use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 
 class DxServiceProvider extends ServiceProvider
@@ -26,12 +24,9 @@ class DxServiceProvider extends ServiceProvider
         $this->app->bind(\Dx\Payroll\Repositories\ZohoFormInterface::class,\Dx\Payroll\Repositories\Eloquent\ZohoFormRepository::class);
         $this->app->bind(\Dx\Payroll\Repositories\ZohoRecordInterface::class,\Dx\Payroll\Repositories\Eloquent\ZohoRecordRepository::class);
         $this->app->bind(\Dx\Payroll\Repositories\ZohoSectionInterface::class,\Dx\Payroll\Repositories\Eloquent\ZohoSectionRepository::class);
+        $this->app->bind(\Dx\Payroll\Repositories\ZohoRecordValueInterface::class,\Dx\Payroll\Repositories\Eloquent\ZohoRecordValueRepository::class);
 
         $this->loadRoutesFrom(__DIR__.'/routes/web.php');
-
-        Route::prefix(Env::get("PAYROLL_API_PREFIX_VERSION", "api/dx_payroll/v1"))->group(function () {
-            $this->loadRoutesFrom(__DIR__.'/routes/api.php');
-        });
 
         $this->loadMigrationsFrom(__DIR__.'/database/migrations');
 

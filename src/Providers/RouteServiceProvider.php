@@ -5,6 +5,7 @@ namespace Dx\Payroll\Providers;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Foundation\Support\Providers\RouteServiceProvider as ServiceProvider;
 use Illuminate\Http\Request;
+use Illuminate\Support\Env;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Route;
 
@@ -28,10 +29,9 @@ class RouteServiceProvider extends ServiceProvider
     {
         $this->configureRateLimiting();
 
-        $this->routes(function () {
-            Route::prefix('api/dx_payroll/v1')
-                ->group(__DIR__.'/../routes/api.php');
-        });
+        Route::middleware('api')
+            ->prefix(Env::get("PAYROLL_API_PREFIX_VERSION", "api/dx_payroll/v1"))
+            ->group(__DIR__.'/../routes/api.php');
     }
 
     /**

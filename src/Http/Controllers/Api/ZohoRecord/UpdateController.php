@@ -16,7 +16,7 @@ use Illuminate\Support\Facades\Log;
 /**
  * insert database zoho form
  */
-class InsertController extends BaseController
+class UpdateController extends BaseController
 {
     protected $zohoLib;
     protected $zohoForm;
@@ -33,7 +33,7 @@ class InsertController extends BaseController
     }
    
     /**
-     * handle insert record to database EAV
+     * handle update record to database EAV
      */
     public function index(ApiInsertZohoRecord $request)
     {
@@ -55,21 +55,28 @@ class InsertController extends BaseController
                 return $this->sendError($request, ' ::: $this->zohoForm ::: Not found form in database');
             }
 
-            $zohoRecord = $this->zohoRecord->create(['form_id' => $zohoForm->id, 'zoho_id' => $zohoID]);
-            
+            $zohoRecord = $this->zohoRecord->where('form_id', $zohoForm->id)
+                                           ->where('zoho_id', $zohoID)
+                                           ->first();
+
+            if (is_null($zohoRecord)) {
+                Log::channel('dx')->info(self::class .' ::: ERROR $zohoRecord empty ');
+                return $this->sendError($request, 'zohoRecord empty');
+            }
+
             $zohoFormSections = $zohoForm->sections->keyBy('section_name');
             if (!empty($responseDataRecord['tabularSections'])) {
                 foreach ($responseDataRecord['tabularSections'] as $tabularName => $values) {
                     if (!isset($zohoFormSections[$tabularName]) || empty($values[0])) continue;
 
                     foreach ($values as $value) {
-                        $this->insertZohoRecordValue($zohoFormSections[$tabularName]->attributes->keyBy('field_label'), $zohoRecord, $value, $value['tabular.ROWID']);
+                        $this->updateZohoRecordValue($zohoFormSections[$tabularName]->attributes->keyBy('field_label'), $zohoRecord, $value, $value['tabular.ROWID']);
                     }
                 }
                 unset($responseDataRecord['tabularSections']);
             }
 
-            $this->insertZohoRecordValue($zohoForm->attributes->keyBy('field_label'), $zohoRecord, $responseDataRecord);
+            $this->updateZohoRecordValue($zohoForm->attributes->keyBy('field_label'), $zohoRecord, $responseDataRecord);
 
             DB::commit();
         } catch (Exception $e) {
@@ -83,7 +90,7 @@ class InsertController extends BaseController
         return $this->sendResponse($request, 'Successfully.');
     }
 
-    public function insertZohoRecordValue($attributes, $zohoRecord, $zohoData, $rowId = 0)
+    public function updateZohoRecordValue($attributes, $zohoRecord, $zohoData, $rowId = 0)
     {
         $arrayKeys = array_keys($zohoData);
 
@@ -95,12 +102,10 @@ class InsertController extends BaseController
                     $value = $zohoData[$fieldLabel];
                 }
 
-                $this->zohoRecordValue->create([
-                    'record_id' => $zohoRecord->id,
-                    'field_id' => $attributes[$fieldLabel]->id,
-                    'row_id' => $rowId,
-                    'value' => $value,
-                ]);
+                $this->zohoRecordValue->where('record_id', $zohoRecord->id)
+                ->where('field_id', $attributes[$fieldLabel]->id)
+                ->where('row_id', $rowId)
+                ->update(['value' => $value]);
             }
         }
     }

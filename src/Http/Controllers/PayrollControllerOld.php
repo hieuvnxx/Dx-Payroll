@@ -275,18 +275,19 @@ class PayrollController extends BaseController
 
     public function roundDay($totalHour = 0, $arrPayrollConfig = [])
     {
-        if ($totalHour == '') {
-            $totalHour = 0;
+        $day = 0;
+        $fullDay = !empty($arrPayrollConfig['standard_working_hour']) ? doubleval($arrPayrollConfig['standard_working_hour']) : 0;
+        $halfDay = !empty($arrPayrollConfig['standard_working_hour_haftday']) ? doubleval($arrPayrollConfig['standard_working_hour_haftday']) : 0;
+        if ($halfDay == 0 || $fullDay == 0) {
+            return $day; 
         }
-        $halfDay = (double)$arrPayrollConfig['standard_working_hour_haftday'];
-        $fullDay = (double)$arrPayrollConfig['standard_working_hour'];
+
         if ($totalHour >= $fullDay) {
             $day = 1;
         } elseif ($totalHour >= $halfDay) {
             $day = 0.5;
-        } else {
-            $day = 0;
         }
+        
         return $day;
     }
 }

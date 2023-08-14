@@ -5,6 +5,7 @@ namespace Dx\Payroll\Integrations;
 use Dx\Payroll\Integrations\ZohoOauthToken;
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\GuzzleException;
+use Illuminate\Support\Env;
 
 class ZohoPeopleIntegration
 {
@@ -205,13 +206,30 @@ class ZohoPeopleIntegration
     {
         $params['sIndex'] = $index;
         $params['limit'] = $limit;
+        $searchString = '';
+
+        if (!empty($searchParams)) {
+            foreach ($searchParams as $param) {
+                $searchCriteria = $param['searchCriteria'] ?? 'AND';
+                if (!empty($searchString)) {
+                    $searchString .= " | {searchField: " . "'" . $param['searchField'] . "'" . ", searchOperator: " . "'" . $param['searchOperator'] . "'" . ", searchCriteria: " . "'" . $searchCriteria . "'" . ", searchText : " . "'" . $param['searchText'] . "'" . "}";
+                } else {
+                    $searchString .= "{searchField: " . "'" . $param['searchField'] . "'" . ", searchOperator: " . "'" . $param['searchOperator'] . "'" . ", searchCriteria: " . "'" . $searchCriteria . "'" . ", searchText : " . "'" . $param['searchText'] . "'" . "}";
+
+                }
+            }
+        }
+
+        if (!empty($searchString)) {
+            $params["searchParams"] = $searchString;
+        }
 
         return $this->callZoho(zoho_people_get_records_path($formLinkName), $params);
     }
 
-    public function deleteRecords($form, $id)
+    public function deleteRecords($form, $ids)
     {
-        $body['recordIds'] = $id;
+        $body['recordIds'] = $ids;
         $body['formLinkName'] = $form;
 
         return $this->callZoho(zoho_people_delete_records_path(), $body);
@@ -287,10 +305,9 @@ class ZohoPeopleIntegration
         return $this->callZoho(zoho_people_get_records_path('leave'), $body, $convert);
     }
 
-    public function insertRecord($formLinkName, $inputData = [], $zohoId = '',  $formatDate = '')
+    public function insertRecord($formLinkName, $inputData = [], $formatDate = '')
     {
         $body = [];
-        if ($zohoId) $body['recordId'] = $zohoId;
 
         if (!empty($inputData)) $body['inputData'] = json_encode($inputData, JSON_UNESCAPED_UNICODE);
 
@@ -306,7 +323,7 @@ class ZohoPeopleIntegration
 
         if (!empty($inputData)) $body['inputData'] = json_encode($inputData, JSON_UNESCAPED_UNICODE);
 
-        if (!empty($tabular)) $body['tabularData'] = json_encode($tabular, JSON_UNESCAPED_UNICODE);
+        if (!empty($tabularData)) $body['tabularData'] = json_encode($tabularData, JSON_UNESCAPED_UNICODE);
 
         if ($formatDate) $body['dateFormat'] = $formatDate;
 

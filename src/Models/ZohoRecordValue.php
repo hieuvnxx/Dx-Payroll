@@ -22,8 +22,19 @@ class ZohoRecordValue extends Model
         'value',
     ];
 
-    public function records(){
-        return $this->belongsTo(ZohoRecordValue::class,'id', 'record_id');
+    public function records()
+    {
+        return $this->belongsTo(ZohoRecordValue::class, 'id', 'record_id');
+    }
+
+    public function fields()
+    {
+        return $this->belongsTo(ZohoRecordField::class, 'id', 'field_id');
+    }
+
+    public function sections()
+    {
+        return $this->belongsTo(ZohoSection::class, 'id', 'section_id');
     }
 
     public static function createOrUpdateZohoRecordValue($attributes, $zohoRecord, $zohoData, $rowId = 0)

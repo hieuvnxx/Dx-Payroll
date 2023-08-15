@@ -25,8 +25,6 @@ class MigrateZohoForm extends Command
     public function __construct()
     {
         parent::__construct();
-
-        $this->zohoLib = ZohoPeopleIntegration::getInstance();
     }
 
     /**
@@ -37,6 +35,8 @@ class MigrateZohoForm extends Command
     public function handle()
     {
         $this->info(now()->toDateTimeString() . " Start: dxpayroll:migrateZohoForm");
+
+        $this->zohoLib = ZohoPeopleIntegration::getInstance();
 
         //get form from zoho with api
         $arrForm = $this->zohoLib->callZoho(zoho_people_fetch_forms_path(), [], false);

@@ -29,7 +29,6 @@ class MigrateDataOrganizationFromZoho extends Command
     {
         parent::__construct();
         
-        $this->zohoLib = ZohoPeopleIntegration::getInstance();
         $this->zohoForm = $zohoForm;
         $this->zohoRecord = $zohoRecord;
     }
@@ -42,6 +41,8 @@ class MigrateDataOrganizationFromZoho extends Command
     public function handle()
     {
         $this->info(now()->toDateTimeString() . " Start: dxpayroll:migrateDataOrganizationFromZoho");
+
+        $this->zohoLib = ZohoPeopleIntegration::getInstance();
 
         $modulePayrollFormLinkNames = [
             'DEPARTMENT_FORM_LINK_NAME' => Env::get('DEPARTMENT_FORM_LINK_NAME', null),

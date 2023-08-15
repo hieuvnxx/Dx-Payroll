@@ -275,10 +275,12 @@ class ZohoPeopleIntegration
             'empId' => $empCode,
         ];
 
+        $response = [];
+
         $result = $this->callZoho(zoho_people_get_shift_configuration_path(), $bodyShift, true);
         if(!empty($result['userShiftDetails']['shiftList'])){
-            foreach ($result['userShiftDetails']['shiftList'] as $item){
-                if(!empty($dataPunch)){
+            foreach ($result['userShiftDetails']['shiftList'] as $item) {
+                if (!empty($dataPunch)) {
                     foreach ($dataPunch as $date => $punch){
                         $dateItem = date('Y-m-d', strtotime($item['date']));
                         if(strtotime($item['date']) == strtotime($date)){

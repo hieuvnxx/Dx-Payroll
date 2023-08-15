@@ -50,7 +50,8 @@ class ZohoRecordRepository extends BaseRepository implements ZohoRecordInterface
         $response = $this->where('dx_zoho_records.form_id', $zohoForm->id);
         
         /*
-        * pending update for search multiple params
+        * pending update for search multiple params and criteria
+        * suggest writing on new function
         */
         if (!empty($params)) {
             foreach ($params as $key => $value) {

@@ -3,6 +3,7 @@
 // use Dx\Payroll\Http\Controllers\Api\ZohoForm\InsertController as ZohoFormInsertController;
 use Dx\Payroll\Http\Controllers\Api\ZohoRecord\InsertController as ZohoRecordInsertController;
 use Dx\Payroll\Http\Controllers\Api\Payroll\MonthlyWorkingTimeController;
+use Dx\Payroll\Http\Controllers\Api\Payroll\PayslipController;
 use Dx\Payroll\Http\Controllers\Api\ZohoRecord\UpdateController as ZohoRecordUpdateController;
 use Illuminate\Support\Facades\Route;
 
@@ -18,5 +19,9 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
     Route::prefix('payroll')->group( function () {
         Route::post('monthy_working_time/processByCode', [MonthlyWorkingTimeController::class, 'processByCode']);
+        Route::post('monthy_working_time/processAll', [MonthlyWorkingTimeController::class, 'processAll']);
+
+        Route::post('payslip/processByCode', [PayslipController::class, 'processByCode']);
+        Route::post('payslip/processAll', [PayslipController::class, 'processAll']);
     });
 });

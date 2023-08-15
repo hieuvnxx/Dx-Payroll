@@ -1,83 +1,87 @@
 <?php
 
-
-namespace Dx\Payroll\Http\Controllers\Api\Payroll;
+namespace Dx\Payroll\Jobs\Payroll;
 
 use Carbon\Carbon;
-use Dx\Payroll\Http\Controllers\Api\Payroll\PayrollController;
-use Dx\Payroll\Http\Requests\ApiWorkingTimeAll;
-use Dx\Payroll\Http\Requests\ApiWorkingTimeByCode;
-use Dx\Payroll\Jobs\Payroll\PushMonthyWorkingTimePerEmployeeToZoho;
+use Dx\Payroll\Integrations\ZohoPeopleIntegration;
+use Dx\Payroll\Repositories\ZohoFormInterface;
+use Dx\Payroll\Repositories\ZohoRecordInterface;
+use Dx\Payroll\Repositories\ZohoRecordValueInterface;
+use Exception;
+use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Foundation\Bus\Dispatchable;
+use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Env;
+use Illuminate\Support\Facades\Log;
 
-/**
- * insert database zoho form
- */
-class MonthlyWorkingTimeController extends PayrollController
+class PushMonthyWorkingTimePerEmployeeToZoho implements ShouldQueue
 {
-    public function processAll(ApiWorkingTimeAll $request)
+    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+
+    private $employee;
+    private $month;
+
+    private $zohoLib;
+    private $zohoForm;
+    private $zohoRecord;
+    private $zohoRecordValue;
+
+    /**
+     * Create a new job instance.
+     * the dataJob sample :
+     * [
+     *      'employee' => [...]
+     *      'month' => '05-2023'
+     * ]
+     * @return void
+     */
+    public function __construct($dataJob)
     {
-        $month   = $request->month;
-        $employeeFormLinkName       = Env::get('EMPLOYEE_FORM_LINK_NAME');
-        $employeeIdNumberFieldLabel = Env::get('EMPLOYEE_FORM_ID_NUMBER_FIELD_LABEL');
-
-        $offset = 0;
-        $limit  = 100;
-        
-        $arrEmpCode = [];
-        while (true) {
-            $employees = $this->zohoRecord->getRecords($employeeFormLinkName, $offset, $limit, ['Employeestatus' => "Active"]);
-            if (empty($employees)) {
-                break;
-            }
-
-            foreach($employees as $employee) {
-                $arrEmpCode[] = $employee[$employeeIdNumberFieldLabel];
-                
-                $data = [
-                    'employee' => $employee,
-                    'month' => $month
-                ];
-                PushMonthyWorkingTimePerEmployeeToZoho::dispatch($data);
-            }
-
-            $offset += $limit;
-        }
-
-        return $this->sendResponse($request, 'Successfully.', [ 'empCodes' => $arrEmpCode, 'total' => count($arrEmpCode)]);
+        $this->employee = $dataJob['employee'];
+        $this->month = $dataJob['month'];
     }
 
     /**
-     * 
+     * Execute the job.
+     *
+     * @return void
      */
-    public function processByCode(ApiWorkingTimeByCode $request)
+    public function handle(ZohoFormInterface $zohoForm, ZohoRecordInterface $zohoRecord, ZohoRecordValueInterface $zohoRecordValue)
     {
-        $employeeFormLinkName       = Env::get('EMPLOYEE_FORM_LINK_NAME');
+        $this->zohoLib = ZohoPeopleIntegration::getInstance();
+
+        $this->zohoForm = $zohoForm;
+        $this->zohoRecord = $zohoRecord;
+        $this->zohoRecordValue = $zohoRecordValue;
+
         $employeeIdNumberFieldLabel = Env::get('EMPLOYEE_FORM_ID_NUMBER_FIELD_LABEL');
         $constantConfigFormLinkName = Env::get('PAYROLL_CONSTANT_CONFIGURATION_FORM_LINK_NAME');
         $monthlyWorkingTimeFormLinkName = Env::get('PAYROLL_MONTHY_WORKING_TIME_FORM_LINK_NAME');
 
-        $empCode = $request->code;
-        $month   = $request->month;
+        $employee = $this->employee;
+        $month    = $this->month;
+
+        $empCode = $employee[$employeeIdNumberFieldLabel];
         $monthly = str_replace('-', '/', $month);
         $code = $empCode . "-" . $monthly;
 
         $formEav = $this->zohoForm->has('attributes', 'sections', 'sections.attributes')->with('attributes', 'sections', 'sections.attributes')->where('form_link_name', $monthlyWorkingTimeFormLinkName)->first();
         if (is_null($formEav)) {
-            return $this->sendError($request, 'Something error with monthly working time form in database.');
+            Log::channel('dx')->info('formEav is null ::: empCode :::' . $empCode);
+            throw new \ErrorException('formEav is null');
         }
 
         $constantConfigs = $this->zohoRecord->getRecords($constantConfigFormLinkName);
         if (empty($constantConfigs)) {
-            return $this->sendError($request, 'Constant configuration empty in database. Please re-generate constant configuration.');
+            Log::channel('dx')->info('Constant configuration empty in database. Please re-generate constant configuration.' . $empCode);
+            throw new \ErrorException('Constant configuration empty in database. Please re-generate constant configuration.');
         }
 
         $constantConfig = $constantConfigs[0];
 
         list($fromSalary, $toSalary) = payroll_range_date($month, $constantConfig['from_date'], $constantConfig['to_date']);
-
-        // get employee informations by code
-        $employee = $this->zohoRecord->getRecords($employeeFormLinkName, 0, 200, [$employeeIdNumberFieldLabel => $empCode])[0];
 
         // fetch all punch in - out
         /*
@@ -133,7 +137,8 @@ class MonthlyWorkingTimeController extends PayrollController
         $weekendNight, $holidayHour, $holidayNight) = $this->processUpdateData($dataShiftConfig, $constantConfig, $employee, $leaves, $overtimes, $formEav);
 
         if (empty($tabularData)) {
-            return $this->sendError($request, 'Something error. Can not generate attendance detail. empCode: ' . $empCode);
+            Log::channel('dx')->info('Something error. Can not generate attendance detail. empCode:' . $empCode);
+            throw new \ErrorException('Something error. Can not generate attendance detail. empCode: ' . $empCode);
         }
         
         $totalWorkingDays = $standardWorkingDay + $standardWorkingDayProbation;
@@ -159,17 +164,17 @@ class MonthlyWorkingTimeController extends PayrollController
 
         $rspInsert = $this->zohoLib->insertRecord($monthlyWorkingTimeFormLinkName, $inputData, 'yyyy-MM-dd');
         if (!isset($rspInsert['result']) || !isset($rspInsert['result']['pkId'])) {
-            return $this->sendError($request, 'Something error. Can not insert new record monthy working time in to zoho.', $inputData);
+            Log::channel('dx')->info('Something error. Can not insert new record monthy working time in to zoho. empCode:' . $empCode);
+            throw new \ErrorException('Something error. Can not insert new record monthy working time in to zoho.');
         }
 
         $zohoId = $rspInsert['result']['pkId'];
-            
+
         $rspUpdate = $this->zohoLib->updateRecord($monthlyWorkingTimeFormLinkName, $inputData, $tabularData, $zohoId, 'yyyy-MM-dd');
         if (!isset($rspUpdate['result']) || !isset($rspUpdate['result']['pkId'])) {
-            return $this->sendError($request, 'Something error. Can not update attendance detail to record monthy working time with id : '. $zohoId, $inputData);
+            Log::channel('dx')->info('Something error. Can not update attendance detail to record monthy working time with id :' . $zohoId);
+            throw new \ErrorException('Something error. Can not update attendance detail to record monthy working time with id : '. $zohoId);
         }
-
-        return $this->sendResponse($request, 'Successfully.', [$rspInsert, $rspUpdate]);
     }
 
     /**
@@ -367,6 +372,7 @@ class MonthlyWorkingTimeController extends PayrollController
             }
 
             $sections = $formEav->sections;
+
             if (!$sections->isEmpty()) {
                 foreach ($sections as $section) {
                     $item['append_by_logic_code_actual_Date'] = $date;

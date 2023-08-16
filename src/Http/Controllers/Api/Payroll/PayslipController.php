@@ -3,6 +3,7 @@
 
 namespace Dx\Payroll\Http\Controllers\Api\Payroll;
 
+use Carbon\Carbon;
 use Dx\Payroll\Http\Controllers\Api\Payroll\PayrollController;
 use Dx\Payroll\Http\Requests\ApiPayslipByCode;
 use Dx\Payroll\Integrations\ZohoPeopleIntegration;
@@ -38,190 +39,327 @@ class PayslipController extends PayrollController
         $formMasterDataFormLinkName = Env::get('PAYROLL_FORM_MASTER_DATA_FORM_LINK_NAME');
         $salaryFactorFormLinkName = Env::get('PAYROLL_SALARY_FACTOR_FORM_LINK_NAME');
         $formulaSourceFormLinkName = Env::get('PAYROLL_FORMULA_SOURCE_FORM_LINK_NAME');
+        $payslipFormLinkName = Env::get('PAYROLL_PAYSLIP_FORM_LINK_NAME');
 
         $empCode = $request->code;
         $month   = $request->month;
         $monthly = str_replace('-', '/', $month);
         $code = $empCode . "-" . $monthly;
 
-        DB::enableQueryLog();
-
-        $formulaSourceCollect = $this->getAllDataFormLinkName($formulaSourceFormLinkName);
-        $salaryFactorCollect = $this->getAllDataFormLinkName($salaryFactorFormLinkName);
         $masterDataFormCollect = $this->getAllDataFormLinkName($formMasterDataFormLinkName);
+        $salaryFactorCollect = $this->getAllDataFormLinkName($salaryFactorFormLinkName);
+        $formulaSourceCollect = $this->getAllDataFormLinkName($formulaSourceFormLinkName);
+
+        $cacheDataForm = [];
+        /** formEav*/
+        $formEav = $this->zohoForm->has('attributes', 'sections', 'sections.attributes')->with('attributes', 'sections', 'sections.attributes')->where('form_link_name', $payslipFormLinkName)->first();
+        if (is_null($formEav)) {
+            return $this->sendError($request, 'Something error with monthly working time form in database.');
+        }
 
         /** employee information */
-        $employee = $this->zohoRecord->getRecords($employeeFormLinkName, 0, 200, [$employeeIdNumberFieldLabel => $empCode])[0];
+        $employeeData = $this->zohoRecord->getRecords($employeeFormLinkName, 0, 200, [$employeeIdNumberFieldLabel => $empCode])[0];
+        $cacheDataForm[$employeeFormLinkName] = $employeeData;
 
         /** fetch data working time for employee */
         $monthlyWorkingsByCode = $this->zohoRecord->getRecords($monthlyWorkingTimeFormLinkName, 0, 200, ['code' => $code, 'salary_period' => $monthly]);
         $existMonthlyWorkingTime = !empty($monthlyWorkingsByCode) ? $monthlyWorkingsByCode[0] : [];
+        $standardWorkingDay = $existMonthlyWorkingTime['standard_working_day'] ?? 0;
+        $standardWorkingDayProbation = $existMonthlyWorkingTime['standard_working_day_probation'] ?? 0;
 
-
-        /**
-         * TODO
-         */
-        $sourceAll = $salaryFactorCollect->map(function($item) use ($formulaSourceCollect) {
-            dd($item, $formulaSourceCollect->count());
-        });
-        dd(1);
-
-        // tổng hợp công thức và dữ liệu
-        $sourceSystem = [];
-        $sourceFormular = [];
-        $sourcePayslip = [];
-        foreach ($salaryFactorCollect as $salaryFactor){
-            dd($salaryFactor);
-
-            if($factor['type'] == 'Có sẵn trên hệ thống'){
-                foreach ($allMasterData as $form){
-                    if($factor['field_name'] == $form['Zoho_ID']){
-                        $sourceSystem[$factor['abbreviation']] = array_merge($form, $factor);
-                    };
+        /* assign value to key */
+        $keyWithVals = $salaryFactorCollect->reject(function ($factor) {
+            return $factor['type'] != 'Có sẵn trên hệ thống' || empty($factor['field_name']);
+        })->map( function($factor) use (&$cacheDataForm, $masterDataFormCollect, $employeeData) {
+            $masterDataFormZohoId = $factor['field_name'];
+            
+            $masterDataByFactor = $masterDataFormCollect->filter(function ($masterData) use ($masterDataFormZohoId) {
+                if ($masterData['Zoho_ID'] == $masterDataFormZohoId) {
+                    return $masterData;
                 }
-            };
-            if($factor['type'] == 'Tính theo công thức'){
-                foreach ($allFomular as $formula){
-                    if($formula['field'] == $factor['Zoho_ID'] && isset($formula['formula'])){
-                        $sourceFormular[$factor['abbreviation']] = $formula['formula'];
-                    }
+            })->values()->first();
+            
+            if (!empty($masterDataByFactor)) {
+                $searchParams = [];
+                if ($factor['Condition'] == 'Theo nhân viên') {
+                    $searchParams = array_merge($searchParams, ['employee' => $employeeData['Zoho_ID']]);
                 }
+                return [ $factor['abbreviation'] => $this->replaceSystemDataToFactor($cacheDataForm, $masterDataByFactor['form_label'],
+                                                                                    $masterDataByFactor['field_label'], $searchParams)];
             }
-            if($factor['type'] == 'Cập nhật trên bảng lương'){
-                $sourcePayslip[$factor['factor']] = $factor['abbreviation'];
-            }
-        }
+        })->values()->collapse()->all();
 
-        dd(1);
-
-
-        // thay data vào các trường đơn
-        if(!empty($sourceSystem)){
-            foreach ($sourceSystem as $keySystem => $valueSystem){
-                if(!empty($employeeData)){
-                    foreach ($employeeData as $key => $value){
-                        if($key == $valueSystem['field_label']){
-                            $sourceSystem[$keySystem] = (double)$value;
-                        }
-                    }
+        /* re-map fomula with value */
+        $maths = ['+', '-', '*', '/', '(', ')'];
+        $fomulaVals = $salaryFactorCollect->reject(function ($factor) {
+            return $factor['type'] != 'Tính theo công thức';
+        })->map( function($factor) use ($formulaSourceCollect, $maths, $keyWithVals) {
+            $factorZohoId = $factor['Zoho_ID'];
+            $formulaByFactor = $formulaSourceCollect->filter(function ($fomula) use ($factorZohoId) {
+                if ($fomula['field'] == $factorZohoId) {
+                    return $fomula;
                 }
-            }
-        }
-        // Tổng hợp lại công thức
-        $arrExpression = [];
-        $math = ['+', '-', '*', '/', '(', ')'];
-        foreach ($sourceFormular as $res => &$fomularRes){
-            $arrExpression = explode('|', str_replace($math, '|', $fomularRes));
-            foreach ($arrExpression as $expression){
-                if(!empty($expression) && !is_numeric($expression)){
-                    foreach ($sourceFormular as $req => $fomularReq){
-                        if($expression == $req){
-                            $sourceFormular[$res] = str_replace($req, '('.$fomularReq.')', $fomularRes);
-                        }
-                    }
-                }
-                // thay thế dữ liệu
-                foreach ($sourceSystem as $sysName => $sysData){
-                    if($expression == $sysName && !is_array($sysData)){
-                        $sourceFormular[$res] = str_replace($sysName, $sysData, $fomularRes);
-                    }
+            })->values()->first();
+
+            $fomulaString = $formulaByFactor['formula'];
+
+            $arrExpression = explode('|', str_replace($maths, '|', $fomulaString));
+            foreach ($arrExpression as $expression) {
+                if (empty($expression)) continue;
+
+                if (isset($keyWithVals[$expression]) && !is_array($keyWithVals[$expression])) {
+                    $val = empty($keyWithVals[$expression]) ? 0 : $keyWithVals[$expression];
+                    $fomulaString = preg_replace('/\b'.$expression.'\b/u', $val, $fomulaString);
+                    continue;
                 }
             }
-        }
 
-        //eval
-        $totalFomular = [];
-        foreach ($sourceFormular as $key => $total){
-            foreach ($sourcePayslip as $field_name => $field_label){
-                if($key == $field_label){
-                    if(preg_match('/^[-+*\/()\d\.\s]+$/', $total)){
-                        $totalFomular[$field_name] = eval("return {$total};");
-                    }else{
-                        $totalFomular[$field_name] = 0;
-                    }
-                }
+            return [ $factor['abbreviation'] => $fomulaString];
+        })->values()->collapse()->all();
+
+        $constantVals = $this->mappingConstantWithKeyValue($month, $employeeData);
+        $this->mappingContantValueToFomulaValsAndKeyVals($constantVals, $fomulaVals, $keyWithVals);
+        $this->sortFomulaSource($fomulaVals, $keyWithVals);
+
+        $inputData = [];
+        $inputData['employee1']                      = $employeeData['Zoho_ID'];
+        $inputData['salary_period']                  = $monthly;
+        $inputData['code']                           = $code;
+        $inputData['standard_working_day']           = intval($standardWorkingDay);
+        $inputData['standard_working_day_probation'] = intval($standardWorkingDayProbation);
+
+
+        /* check if exist record */
+        $payslipExists = $this->zohoRecord->getRecords($payslipFormLinkName, 0, 1, [
+            'code' => $code,
+            'salary_period'=> $monthly
+        ]);
+        $payslipExist = isset($payslipExists[0]) ? $payslipExists[0] : [];
+
+
+        $payslipLogDetails = [];
+
+        $tabularData = $this->processTabularData($formEav, $fomulaVals, $keyWithVals, $payslipExist);
+        if (!empty($payslipExist)) {
+            $payslipZohoId = $payslipExist['Zoho_ID'];
+            $responseUpdatePayslip = $this->zohoLib->updateRecord($payslipFormLinkName, $inputData, $tabularData, $payslipZohoId);
+            $payslipLogDetails[] = $responseUpdatePayslip;
+            if (!isset($responseUpdatePayslip['result']) || !isset($responseUpdatePayslip['result']['pkId'])) {
+                return $this->sendError($request, 'Something error. Can not update exist payslip with zoho id : '. $payslipZohoId, $responseUpdatePayslip);
+            }
+        } else {
+            $rspInsert = $this->zohoLib->insertRecord($payslipFormLinkName, $inputData, 'yyyy-MM-dd');
+            $payslipLogDetails[] = $rspInsert;
+            if (!isset($rspInsert['result']) || !isset($rspInsert['result']['pkId'])) {
+                return $this->sendError($request, 'Something error. Can not insert new record payslip in to zoho.', $rspInsert);
+            }
+    
+            $zohoId = $rspInsert['result']['pkId'];
+            $rspUpdate = $this->zohoLib->updateRecord($payslipFormLinkName, $inputData, $tabularData, $zohoId, 'yyyy-MM-dd');
+            $payslipLogDetails[] = $rspUpdate;
+            if (!isset($rspUpdate['result']) || !isset($rspUpdate['result']['pkId'])) {
+                return $this->sendError($request, 'Something error. Can not update payslip with zoho id : '. $zohoId, $rspUpdate);
             }
         }
 
-        $standardWorkingDay = $employeeData['standard_working_day'] ?? 0;
-        $standardWorkingDayProbation = $employeeData['standard_working_day_probation'] ?? 0;
-        $data = [];
-        $data['employee1']                      = $employeeData['Zoho_ID'];
-        $data['salary_period']                  = $monthly;
-        $data['code']                           = $code;
-        $data['standard_working_day']           = intval($standardWorkingDay);
-        $data['standard_working_day_probation'] = intval($standardWorkingDayProbation);
-
-        // Kiểm tra xem đã tồn tại monthly working report chưa
-        $payslipIs          = [];
-        $tabularSections    = [];
-        $payslip = $this->zoho->searchPayroll($config[$arrInput['config_payroll']['payslip_form_name']]['getRecords'], $code);
-        if(!isset($payslip['errors'])){
-            $payslipIs = $payslip[0];
-        }
-
-        // Xử lý tabular
-        $listField = $this->zohoForm->getFieldOfForm($arrInput['config_payroll']['payslip_form_name']);
-        if(!$listField->isEmpty()){
-            foreach ($listField as $fieldID){
-                if(!is_null($fieldID->section_id)){
-                    foreach ($totalFomular as $formular => $total){
-                        if($fieldID->field_name == $formular){
-                            $tabularSections[$fieldID->section_id]['add'][0][$fieldID->field_label] = $total;
-                        }
-                    }
-                    if(!empty($payslipIs['tabularSections'])){
-                        foreach ($payslipIs['tabularSections'] as $key => $tabular){
-                            if(empty($tabular)){
-                                continue;
-                            }
-                            foreach ($tabular as $item){
-                                if(!isset($item['tabular.ROWID'])){
-                                    continue;
-                                }
-                                if($key == $fieldID->section_name){
-                                    $tabularSections[$fieldID->section_id]['delete'][]    = $item['tabular.ROWID'];
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        if(!empty($payslipIs)){
-            $zohoId     = $payslipIs['Zoho_ID'];
-            $actionPay  = $config[$arrInput['config_payroll']['payslip_form_name']]['updateRecord'];
-        }else{
-            $zohoId     = '';
-            $actionPay  = $config[$arrInput['config_payroll']['payslip_form_name']]['insertRecord'];
-        }
-
-        // Insert if not found
-        if(empty($zohoId)){
-            $insertPayslip = $this->zoho->createdOrUpdated($actionPay, $data, [], $zohoId, 'yyyy-MM-dd');
-            if(isset($insertPayslip['result']['pkId'])){
-                $log .= 'Create payslip success'.PHP_EOL;
-                $zohoId = $insertPayslip['result']['pkId'] ?? '';
-                $actionPay = $config[$arrInput['config_payroll']['payslip_form_name']]['updateRecord'];
-            }else{
-                $log .= 'Create payslip failed'.PHP_EOL;
-                Log::channel('dx')->info($log);
-                return 0;
-            }
-        }
-
-        if(!empty($zohoId)) {
-            $response = $this->zoho->createdOrUpdated($actionPay, $data, $tabularSections, $zohoId, 'yyyy-MM-dd');
-            if (isset($response['result']['pkId'])) {
-                $log .= 'Update Success.' . PHP_EOL;
-            } else {
-                $log .= 'Update Failed' .json_encode($response). PHP_EOL;
-            }
-        }
-        Log::channel('dx')->info($log);
-        return 200;
+        return $this->sendResponse($request, 'Successfully.', $payslipLogDetails);
     }
 
-    
+    private function replaceSystemDataToFactor(&$cacheDataForm, $formLinkName, $fieldLabel, $searchParams = [], $zohoId = null)
+    {
+        if (!empty($searchParams) && !empty($cacheDataForm[$formLinkName.$fieldLabel])) {
+            return $cacheDataForm[$formLinkName.$fieldLabel][$fieldLabel];
+        } elseif(!empty($cacheDataForm[$formLinkName])) {
+            return $cacheDataForm[$formLinkName][$fieldLabel];
+        }
+
+        $val = null;
+        if (is_null($zohoId)) {
+            $formData = $this->zohoRecord->getRecords($formLinkName, 0, 200, $searchParams)[0];
+            if (!empty($searchParams)) {
+                $cacheDataForm[$formLinkName.$fieldLabel] = $formData;
+                $val = $cacheDataForm[$formLinkName.$fieldLabel][$fieldLabel];
+            } else {
+                $cacheDataForm[$formLinkName] = $formData;
+                $val = $cacheDataForm[$formLinkName][$fieldLabel];
+            }
+        } else {
+            $formData = $this->zohoRecord->getRecordByZohoID($formLinkName, $zohoId);
+            $cacheDataForm[$formLinkName] = $formData;
+            $val = $cacheDataForm[$formLinkName][$fieldLabel];
+        }
+        
+        return $val;
+    }
+
+    /**
+    * mappingConstantWithKeyValue
+    */
+    private function mappingConstantWithKeyValue($month, $employeeData)
+    {
+        $response = [];
+
+        $constantConfigFormLinkName = Env::get('PAYROLL_CONSTANT_CONFIGURATION_FORM_LINK_NAME');
+        $constantConfigs = $this->zohoRecord->getRecords($constantConfigFormLinkName);
+        $constantConfig = $constantConfigs[0];
+
+
+        list($fromSalary, $toSalary) = payroll_range_date($month, $constantConfig['from_date'], $constantConfig['to_date']);
+        $fromSalary = Carbon::createFromFormat('Y-m-d', $fromSalary);
+        $toSalary = Carbon::createFromFormat('Y-m-d', $toSalary);
+
+        $bonusHolidays = [];
+        $tabularBonusHolidays = $constantConfig['TabularSections']['Quy định thưởng'] ?? [];
+        if (!empty($tabularBonusHolidays)) {
+            foreach ($tabularBonusHolidays as $bonus) {
+                if (empty($bonus['date']) && $bonus['bonus_type'] == "Thưởng sinh nhật" && !empty($employeeData['Date_of_birth'])) {
+                    $day = Carbon::createFromFormat('d-F-Y', $employeeData['Date_of_birth']);
+                    if ($day->gte($fromSalary) && $day->lte($toSalary)) {
+                        $bonusHolidays[] = $bonus;
+                    }
+                }
+
+                if (empty($bonus['date'])) continue;
+
+                $day = Carbon::createFromFormat('d-F-Y', $bonus['date'])->format('Y-m-d');
+                $day = Carbon::createFromFormat('Y-m-d', $day);
+                if ($day->gte($fromSalary) && $day->lte($toSalary)) {
+                    $bonusHolidays[] = $bonus;
+                }
+            }
+        }
+
+        if (!empty($bonusHolidays)) {
+            foreach ($bonusHolidays as $bonus) {
+                $total = $response['thuong_le']['total'] ?? 0;
+                $bonusAmount = (strtolower($employeeData['contract_type']) != 'thử việc') ? $bonus['probation_amount'] : $bonus['amount'];
+                
+                $response['thuong_le']['total'] = $total + $bonusAmount;
+                $response['thuong_le']['detai'][] = $bonus;
+            }
+        }
+
+        /** hard code */
+
+        $response['tong_hoan_thue_tncn']['total'] = 0;
+        $response['thue_tncn']['total'] = 0;
+        $response['truy_thu_thue_tncn']['total'] = 0;
+        $response['truy_thu_khac']['total'] = 0;
+        $response['hoan_bhxh']['total'] = 0;
+        $response['tam_ung']['total'] = 0;
+
+        return $response;
+    }
+
+    /**
+    * mappingConstantWithKeyValue
+    */
+    private function mappingContantValueToFomulaValsAndKeyVals($constantVals, &$fomulaVals, &$keyWithVals)
+    {
+        foreach($constantVals as $key => $val) {
+            foreach ($fomulaVals as &$fomula) {
+                $fomula = preg_replace('/\b'.$key.'\b/u', $val['total'], $fomula);
+            }
+
+            if (!isset($keyWithVals[$key])) $keyWithVals[$key] = $val['total'];
+        }
+    }
+
+    /**
+    * sortFomulaSource
+    */
+    private function sortFomulaSource(&$fomulaSources, &$keyWithVals, $loop = false)
+    {
+        $loop = false;
+        $notHaveMoreEval = true;
+
+        foreach ($fomulaSources as $key => $fomula) {
+            if(preg_match('/^[-+*\/()\d\.\s]+$/', $fomula)){
+                $keyWithVals[$key] = eval("return {$fomula};");
+                unset($fomulaSources[$key]);
+                foreach ($fomulaSources as &$fomula2) {
+                    $fomula2 = preg_replace('/\b'.$key.'\b/u', $keyWithVals[$key], $fomula2);
+                }
+                $notHaveMoreEval = false;
+            } else {
+                foreach(array_keys($fomulaSources) as $label) {
+                    if (str_contains($fomula, $label)) {
+                        $loop = true;
+                    }
+                }
+            }
+        }
+
+        if ($loop && !$notHaveMoreEval) {
+            $this->sortFomulaSource($fomulaSources, $keyWithVals, $loop);
+        }
+    }
+
+    /**
+    * generate tabularData to update in to monthly working time
+    */
+    private function processTabularData($formEav, $fomulaVals, $keyWithVals, $payslipExist)
+    {
+        $tabularAction = [];
+
+        $sections = $formEav->sections;
+
+        foreach ($sections as $section) {
+            $tabularExist = $payslipExist['TabularSections'][$section->section_name] ?? [];
+            if (!empty($tabularExist)) {
+                foreach ($tabularExist as $rowId => $tabular) {
+                    $tabularAction[$section->section_id]['delete'][] = $rowId;
+                }
+            }
+            // if ($section->section_name == "Total Salary/Tổng lương") {
+
+            // }
+
+            // if ($section->section_name == "Total Bonus/ Tổng thưởng") {
+                
+            // }
+
+            // if ($section->section_name == "Total Deduction/Tổng giám trừ") {
+                
+            // }
+
+            if ($section->section_name == "Chi tiết lương cơ bản") {
+                $tabularAction[$section->section_id]['add'][] = [
+                    'basic_salary' => convert_decimal_length($keyWithVals['muc_luong_co_ban'], 0) ?? '',
+                    'insurance_salary' => $keyWithVals['luong_dong_bao_hiem'] ?? '', // note
+                    'official_basic_salary' => convert_decimal_length($keyWithVals['luong_chinh_thuc_theo_ngay_cong'], 0) ?? '',
+                    'actual_basic_salary' => convert_decimal_length($keyWithVals['luong_thuc_linh_co_ban'], 0) ?? '',
+                    'insurance_month' => $keyWithVals['so_thang_trich_bh'] ?? '',
+                    'union_fee' => $keyWithVals['doan_phi_cong_doan'] ?? '',
+                    'si_employee' => $keyWithVals['bhxh_nv'] ?? '',
+                    'hi_employee' => $keyWithVals['bhyt_nv'] ?? '',
+                    'unemployment_fee' => $keyWithVals['bhtn_nv'] ?? '',
+                    'other_deduction' => $keyWithVals['truy_thu_khac'] ?? '',
+                    'si_reimbursement' => $keyWithVals['hoan_bhxh'] ?? '',
+                    'union_fund' => $keyWithVals['kinh_phi_cong_doan'] ?? '',
+                    'si_company' => $keyWithVals['bhxh_cong_ty'] ?? '',
+                    'accident_insurance' => $keyWithVals['bh_tai_nan_lao_dong_benh_nghe_nghiep'] ?? '',
+                    'hi_company' => $keyWithVals['bhyt_cong_ty'] ?? '',
+                    'unemployement_company' => $keyWithVals['bhtn_cong_ty'] ?? '',
+                    'total_refund_tax' => $keyWithVals['tong_hoan_thue_tncn'] ?? '',
+                ];
+            }
+
+            if ($section->section_name == "Chi tiết lương KPI") {
+                $tabularAction[$section->section_id]['add'][] = [
+                    'kpi_salary' => $keyWithVals['thu_nhap_theo_kpi'] ?? '',
+                    'percent_KPI' => $keyWithVals['percent_KPI'] ?? '', // note
+                    'kpi_total_salary' => $keyWithVals['tong_thu_nhap_theo_kpi'] ?? '',
+                    'actual_KPI_salary' => $keyWithVals['actual_KPI_salary'] ?? '',
+                    'meal_subsidy' => $keyWithVals['phu_cap_an_trua'] ?? '',
+                    'fuel_subsidy' => $keyWithVals['phu_cap_xang_xe'] ?? '',
+                    'mobile_subsidy' => $keyWithVals['phu_cap_dien_thoai'] ?? '',
+                    'overtime_allowance' => $keyWithVals['so_tien_lam_ngoai_gio'] ?? '',
+                ];
+            }
+        }
+
+        return $tabularAction;
+    }
+
 }

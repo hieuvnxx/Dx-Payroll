@@ -3,8 +3,8 @@
 
 namespace Dx\Payroll\Http\Controllers\Api\ZohoRecord;
 
-use Dx\Payroll\Http\Requests\ApiInsertZohoRecord;
 use Dx\Payroll\Http\Controllers\Api\BaseController;
+use Dx\Payroll\Http\Requests\ApiDeleteZohoRecord;
 use Dx\Payroll\Integrations\ZohoPeopleIntegration;
 use Dx\Payroll\Repositories\ZohoFormInterface;
 use Dx\Payroll\Repositories\ZohoRecordInterface;
@@ -35,13 +35,37 @@ class DeleteController extends BaseController
     /**
      * handle insert record to database EAV
      */
-    public function index(ApiInsertZohoRecord $request)
+    public function index(ApiDeleteZohoRecord $request)
     {
-        
-    }
+        Log::channel('dx')->info(self::class .' ::: BEGIN index ::: ' , $request->all());
 
-    public function insertZohoRecordValue($attributes, $zohoRecord, $zohoData, $rowId = 0)
-    {
+        $zohoID = $request->Zoho_ID;
+        $formLinkName = $request->formLinkName;
+
+        try {
+            DB::beginTransaction();
+
+            $zohoForm = $this->zohoForm->where('form_link_name', $formLinkName)->first();
+            if (is_null($zohoForm)) {
+                return $this->sendError($request, ' ::: $this->zohoForm ::: Not found form in database');
+            }
+
+            $zohoRecord = $this->zohoRecord->where(['form_id' => $zohoForm->id, 'zoho_id' => $zohoID])->first();
+            if (is_null($zohoRecord)) {
+                return $this->sendError($request, ' ::: $this->zohoRecord ::: Not found record in database . ZohoID: ' . $zohoID);
+            }
+
+            $this->zohoRecordValue->where('record_id', $zohoRecord->id)->delete();
+            $zohoRecord->delete();
+            DB::commit();
+        } catch (Exception $e) {
+            DB::rollback();
+            return $this->sendError($request, 'Exception index  ::: ' . $e->getMessage(), [
+                'message' => $e->getMessage(),
+                'line' => $e->getLine()
+            ]);
+        }
         
+        return $this->sendResponse($request, 'Successfully.');
     }
 }

@@ -37,3 +37,10 @@ function total_standard_working_day_by_working_hour($hour, $rules)
     
     return $day;
 }
+
+function convert_decimal_length($number, $length = 2)
+{
+    if (!is_numeric($number)) $number = 0;
+
+    return number_format($number,$length,'.','');
+}

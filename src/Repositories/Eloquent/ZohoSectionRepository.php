@@ -23,8 +23,4 @@ class ZohoSectionRepository extends BaseRepository implements ZohoSectionInterfa
     {
         return ZohoSection::class;
     }
-
-    public function getSectionID($sectioName){
-        return $this->where('section_name', $sectioName)->get();
-    }
 }

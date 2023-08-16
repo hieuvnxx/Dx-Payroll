@@ -58,7 +58,7 @@ class ZohoRecordRepository extends BaseRepository implements ZohoRecordInterface
                 $response->whereHas('values', function($query) use ($key, $value) {
                     $query->with(['courses.fields' => function($query) use ($key, $value) {
                         $query->where('field_label', $key);
-                    }])->where('value', $value);
+                    }])->where('value', strval($value));
                 });
             }
         }
@@ -82,7 +82,7 @@ class ZohoRecordRepository extends BaseRepository implements ZohoRecordInterface
             throw new \ErrorException('Not found form name in database');
         }
 
-        $response = $this->where('dx_zoho_records.form_id', $zohoForm->id)->where('dx_zoho_records.zoho_id', $ZohoID)
+        $response = $this->where('dx_zoho_records.form_id', $zohoForm->id)->where('dx_zoho_records.zoho_id', strval($ZohoID))
             ->with(['values' => function ($query) {
                 $query->join('dx_zoho_record_fields', 'dx_zoho_record_fields.id', '=', 'field_id')
                     ->join('dx_zoho_sections', 'dx_zoho_sections.id', '=', 'dx_zoho_record_fields.section_id', 'left outer');

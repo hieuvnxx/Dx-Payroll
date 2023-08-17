@@ -35,7 +35,7 @@ class MigrateDataDateDimensionTable extends Command
 
         // Get the date range
         // @NOTE - update the start and end date as per your choice
-        $dates = CarbonPeriod::create('2015-01-01', '2030-12-31');
+        $dates = CarbonPeriod::create('2020-01-01', '2030-12-31');
 
         // For each date create a transformed data
         foreach ($dates as $date) {

@@ -72,7 +72,6 @@ class DateDimension extends Model
      * @var array
      */
     protected $casts = [
-        'date' => 'date:Y-m-d',
         'first_day_of_month' => 'date:Y-m-d',
         'last_day_of_month' => 'date:Y-m-d',
         'first_day_of_next_month' => 'date:Y-m-d',

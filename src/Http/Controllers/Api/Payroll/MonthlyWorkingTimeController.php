@@ -8,6 +8,7 @@ use Dx\Payroll\Http\Controllers\Api\Payroll\PayrollController;
 use Dx\Payroll\Http\Requests\ApiWorkingTimeAll;
 use Dx\Payroll\Http\Requests\ApiWorkingTimeByCode;
 use Dx\Payroll\Jobs\Payroll\PushMonthyWorkingTimePerEmployeeToZoho;
+use Dx\Payroll\Models\DateDimension;
 use Illuminate\Support\Env;
 
 /**
@@ -107,9 +108,9 @@ class MonthlyWorkingTimeController extends PayrollController
         $existMonthlyIds = [];
         $monthlyWorkingTimeExistZoho = $this->zohoLib->getRecords($monthlyWorkingTimeFormLinkName, 0, 200, array(
             [
-                'searchField' => 'code',
-                'searchOperator' => 'Is',
-                'searchText' => $code,
+                'searchField' => 'employee',
+                'searchOperator' => 'Contains',
+                'searchText' => $empCode,
             ],
             [
                 'searchField' => 'salary_period',
@@ -117,25 +118,12 @@ class MonthlyWorkingTimeController extends PayrollController
                 'searchText' => $monthly,
             ],
         ));
-        
-        /* remove exist record in zoho if exist */
-        if (!empty($monthlyWorkingTimeExistZoho[0])) {
-            $existMonthlyIds = collect($monthlyWorkingTimeExistZoho)->map(function ($data) {
-                return $data['Zoho_ID'];
-            });
-            $existMonthlyStringIds = implode(',', $existMonthlyIds->toArray());
-            $monthlyWorkingTimeExistZoho = $this->zohoLib->deleteRecords($monthlyWorkingTimeFormLinkName, $existMonthlyStringIds);
-        }
 
         list($tabularData, $paidLeave, $holidayCount,
         $standardWorkingTime, $standardWorkingDay, $standardWorkingDayProbation,
         $otMealAllowance, $weekdayHour, $weekNight, $weekendHour,
         $weekendNight, $holidayHour, $holidayNight) = $this->processUpdateData($dataShiftConfig, $constantConfig, $employee, $leaves, $overtimes, $formEav);
 
-        if (empty($tabularData)) {
-            return $this->sendError($request, 'Something error. Can not generate attendance detail. empCode: ' . $empCode);
-        }
-        
         $totalWorkingDays = $standardWorkingDay + $standardWorkingDayProbation;
 
         $inputData = [];
@@ -156,6 +144,35 @@ class MonthlyWorkingTimeController extends PayrollController
         $inputData['weekend_night1'] = $weekendNight;
         $inputData['holiday_hour1'] = $holidayHour;
         $inputData['holiday_night1'] = $holidayNight;
+
+        /* remove exist record in zoho if exist */
+        if (!empty($monthlyWorkingTimeExistZoho[0])) {
+            $existMonthlyIds = collect($monthlyWorkingTimeExistZoho)->map(function ($data) {
+                return $data['Zoho_ID'];
+            })->toArray();
+
+
+            $existToUpdateZohoId = array_shift($existMonthlyIds);
+            if (!empty($existMonthlyIds)) {
+                $existMonthlyStringIds = implode(',', $existMonthlyIds);
+                $rspDeleteMonthlyWorkingTimeExistZoho = $this->zohoLib->deleteRecords($monthlyWorkingTimeFormLinkName, $existMonthlyStringIds);
+            }
+
+            if (empty($tabularData)) {
+                return $this->sendError($request, 'Something error. Can not generate attendance detail. empCode: ' . $empCode);
+            }
+
+            $rspUpdate = $this->zohoLib->updateRecord($monthlyWorkingTimeFormLinkName, $inputData, $tabularData, $existToUpdateZohoId, 'yyyy-MM-dd');
+            if (!isset($rspUpdate['result']) || !isset($rspUpdate['result']['pkId'])) {
+                return $this->sendError($request, 'Something error. Can not update attendance detail to record monthy working time with id : '. $zohoId, $inputData);
+            }
+
+            return $this->sendResponse($request, 'Successfully.', [$rspDeleteMonthlyWorkingTimeExistZoho ?? [], $rspUpdate]);
+        }
+
+        if (empty($tabularData)) {
+            return $this->sendError($request, 'Something error. Can not generate attendance detail. empCode: ' . $empCode);
+        }
 
         $rspInsert = $this->zohoLib->insertRecord($monthlyWorkingTimeFormLinkName, $inputData, 'yyyy-MM-dd');
         if (!isset($rspInsert['result']) || !isset($rspInsert['result']['pkId'])) {
@@ -282,16 +299,17 @@ class MonthlyWorkingTimeController extends PayrollController
         $holidayHour = 0;
         $holidayNight = 0;
 
+        $arrayKeysDate = array_keys($dataShiftConfig);
+        $dateDimension = DateDimension::whereIn('date', $arrayKeysDate)->get()->keyBy('date')->toArray();
         foreach ($dataShiftConfig as $date => $item) {
             $workingHours = 0;
-            $leaveHours = 0;
             $leaveDays = 0;
             $holidayDays = 0;
             $isHoliday = false;
 
             $workingHours = date('H', strtotime($item['TotalHours'])) + date('i', strtotime($item['TotalHours'])) / 60;
             $workingDays = total_standard_working_day_by_working_hour($workingHours, $constantConfig);
-            if (!isset($item['isWeekend']) || (date('w', strtotime($date)) != 6 && date('w', strtotime($date)) != 0)) {
+            if (!isset($item['isWeekend']) && isset($dateDimension[$date]) && !$dateDimension[$date]['is_weekend']) {
                 // ngày công tiêu chuẩn
                 $standardWorkingTime++;
                 if (str_contains(strtolower($item['Status']), "holiday") || str_contains(strtolower($item['Status']), "ngày lễ")) {

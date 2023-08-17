@@ -285,22 +285,27 @@ class PayslipController extends PayrollController
 
         if (!empty($employeeData['TabularSections']['Bonus & Others'])) {
             foreach ($employeeData['TabularSections']['Bonus & Others'] as $bonus) {
-                if ($bonus['Category'] == 'Income/Thu nhập') {
-                    $bonus['bonus_type'] = 'Thưởng cá nhân';
-                    $bonus['amount'] = $bonus['Amount1'];
-                    $total = $constantVals['thuong_le']['total'] ?? 0;
-                    $bonusAmount = $bonus['amount'];
-    
-                    $constantVals['thuong_le']['total'] = $total + $bonusAmount;
-                    $constantVals['thuong_le']['detai'][] = $bonus;
-                } elseif ($bonus['Category'] == 'Deduction/Giảm trừ') {
-                    $bonus['amount'] = $bonus['Amount1'];
-                    $total = $constantVals['thuong_le']['total'] ?? 0;
-                    $bonusAmount = $bonus['amount'];
+     		if (empty($bonus['Date'])) continue;
 
-                    $constantVals['khoan_tru_ca_nhan']['total'] = $total + $bonusAmount;
-                    $constantVals['khoan_tru_ca_nhan']['detai'][] = $bonus;
-                }
+                $day = Carbon::createFromFormat('d-F-Y', $bonus['Date'])->format('Y-m-d');
+                $day = Carbon::createFromFormat('Y-m-d', $day);
+		if ($day->gte($fromSalary) && $day->lte($toSalary)) {
+		    if ($bonus['Category'] == 'Income/Thu nhập') {
+			$bonus['bonus_type'] = 'Thưởng cá nhân';
+	                $bonus['amount'] = $bonus['Amount1'];
+	                $total = $constantVals['thuong_le']['total'] ?? 0;
+	                $bonusAmount = $bonus['amount'];
+								     
+		        $constantVals['thuong_le']['total'] = $total + $bonusAmount;
+	                $constantVals['thuong_le']['detai'][] = $bonus;
+                    } elseif ($bonus['Category'] == 'Deduction/Giảm trừ') {
+	                $bonus['amount'] = $bonus['Amount1'];
+			$total = $constantVals['thuong_le']['total'] ?? 0;
+			$bonusAmount = $bonus['amount'];				
+			$constantVals['khoan_tru_ca_nhan']['total'] = $total + $bonusAmount;	
+			$constantVals['khoan_tru_ca_nhan']['detai'][] = $bonus;
+		    }
+		}
             }
         }
 

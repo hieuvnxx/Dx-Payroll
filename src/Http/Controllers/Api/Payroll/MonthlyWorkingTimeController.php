@@ -158,13 +158,19 @@ class MonthlyWorkingTimeController extends PayrollController
                 $rspDeleteMonthlyWorkingTimeExistZoho = $this->zohoLib->deleteRecords($monthlyWorkingTimeFormLinkName, $existMonthlyStringIds);
             }
 
+            foreach ($monthlyWorkingTimeExistZoho as $monthlyWorkingTime) {
+                if ($monthlyWorkingTime['Zoho_ID'] == $existToUpdateZohoId) {
+                    $this->removeExistTabularZoho($tabularData, $monthlyWorkingTime, $formEav);
+                }
+            }
+
             if (empty($tabularData)) {
                 return $this->sendError($request, 'Something error. Can not generate attendance detail. empCode: ' . $empCode);
             }
 
             $rspUpdate = $this->zohoLib->updateRecord($monthlyWorkingTimeFormLinkName, $inputData, $tabularData, $existToUpdateZohoId, 'yyyy-MM-dd');
             if (!isset($rspUpdate['result']) || !isset($rspUpdate['result']['pkId'])) {
-                return $this->sendError($request, 'Something error. Can not update attendance detail to record monthy working time with id : '. $zohoId, $inputData);
+                return $this->sendError($request, 'Something error. Can not update attendance detail to record monthy working time with id : '. $existToUpdateZohoId, [$inputData, $tabularData]);
             }
 
             return $this->sendResponse($request, 'Successfully.', [$rspDeleteMonthlyWorkingTimeExistZoho ?? [], $rspUpdate]);
@@ -433,5 +439,24 @@ class MonthlyWorkingTimeController extends PayrollController
                 $value = $vars[$fieldLabel] ?? '';
         }
         return $value;
+    }
+
+    /**
+    * removeExistTabularZoho
+    */
+    private function removeExistTabularZoho(&$tabularData, $existMonthlyData, $formEav)
+    {
+        $sections = $formEav->sections;
+        if (!$sections->isEmpty()) {
+            foreach ($sections as $section) {
+                $tabularExistInZoho = $existMonthlyData['tabularSections'][$section->section_name] ?? [];
+                if (!empty($tabularExistInZoho)) {
+                    foreach ($tabularExistInZoho as $value) {
+                        $tabularData[$section->section_id]['delete'][] = $value['tabular.ROWID'];
+
+                    }
+                }
+            }
+        }
     }
 }

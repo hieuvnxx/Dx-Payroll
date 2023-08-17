@@ -112,9 +112,9 @@ class PushMonthyWorkingTimePerEmployeeToZoho implements ShouldQueue
         $existMonthlyIds = [];
         $monthlyWorkingTimeExistZoho = $this->zohoLib->getRecords($monthlyWorkingTimeFormLinkName, 0, 200, array(
             [
-                'searchField' => 'code',
-                'searchOperator' => 'Is',
-                'searchText' => $code,
+                'searchField' => 'employee',
+                'searchOperator' => 'Contains',
+                'searchText' => $empCode,
             ],
             [
                 'searchField' => 'salary_period',
@@ -122,26 +122,12 @@ class PushMonthyWorkingTimePerEmployeeToZoho implements ShouldQueue
                 'searchText' => $monthly,
             ],
         ));
-        
-        /* remove exist record in zoho if exist */
-        if (!empty($monthlyWorkingTimeExistZoho[0])) {
-            $existMonthlyIds = collect($monthlyWorkingTimeExistZoho)->map(function ($data) {
-                return $data['Zoho_ID'];
-            });
-            $existMonthlyStringIds = implode(',', $existMonthlyIds->toArray());
-            $monthlyWorkingTimeExistZoho = $this->zohoLib->deleteRecords($monthlyWorkingTimeFormLinkName, $existMonthlyStringIds);
-        }
 
         list($tabularData, $paidLeave, $holidayCount,
         $standardWorkingTime, $standardWorkingDay, $standardWorkingDayProbation,
         $otMealAllowance, $weekdayHour, $weekNight, $weekendHour,
         $weekendNight, $holidayHour, $holidayNight) = $this->processUpdateData($dataShiftConfig, $constantConfig, $employee, $leaves, $overtimes, $formEav);
 
-        if (empty($tabularData)) {
-            Log::channel('dx')->info('Something error. Can not generate attendance detail. empCode:' . $empCode);
-            throw new \ErrorException('Something error. Can not generate attendance detail. empCode: ' . $empCode);
-        }
-        
         $totalWorkingDays = $standardWorkingDay + $standardWorkingDayProbation;
 
         $inputData = [];
@@ -162,6 +148,46 @@ class PushMonthyWorkingTimePerEmployeeToZoho implements ShouldQueue
         $inputData['weekend_night1'] = $weekendNight;
         $inputData['holiday_hour1'] = $holidayHour;
         $inputData['holiday_night1'] = $holidayNight;
+
+        /* remove exist record in zoho if exist */
+        if (!empty($monthlyWorkingTimeExistZoho[0])) {
+            $existMonthlyIds = collect($monthlyWorkingTimeExistZoho)->map(function ($data) {
+                return $data['Zoho_ID'];
+            })->toArray();
+
+
+            $existToUpdateZohoId = array_shift($existMonthlyIds);
+            if (!empty($existMonthlyIds)) {
+                $existMonthlyStringIds = implode(',', $existMonthlyIds);
+                $rspDeleteMonthlyWorkingTimeExistZoho = $this->zohoLib->deleteRecords($monthlyWorkingTimeFormLinkName, $existMonthlyStringIds);
+            }
+
+            foreach ($monthlyWorkingTimeExistZoho as $monthlyWorkingTime) {
+                if ($monthlyWorkingTime['Zoho_ID'] == $existToUpdateZohoId) {
+                    $this->removeExistTabularZoho($tabularData, $monthlyWorkingTime, $formEav);
+                }
+            }
+
+            if (empty($tabularData)) {
+                Log::channel('dx')->info('Something error. Can not generate attendance detail exist. empCode:' . $empCode . ' . Zoho_ID:' . $existToUpdateZohoId);
+                throw new \ErrorException('Something error. Can not generate attendance detail exist. empCode: ' . $empCode . ' . Zoho_ID:' . $existToUpdateZohoId);
+            }
+
+            $rspUpdate = $this->zohoLib->updateRecord($monthlyWorkingTimeFormLinkName, $inputData, $tabularData, $existToUpdateZohoId, 'yyyy-MM-dd');
+            if (!isset($rspUpdate['result']) || !isset($rspUpdate['result']['pkId'])) {
+                Log::channel('dx')->info('Something error. Can not update attendance detail to record monthy working time with exist Zoho_ID:' . $existToUpdateZohoId);
+                throw new \ErrorException('Something error. Can not update attendance detail to record monthy working time with exist Zoho_ID: ' . $existToUpdateZohoId);
+            }
+
+            return;
+        }
+
+        if (empty($tabularData)) {
+            Log::channel('dx')->info('Something error. Can not generate attendance detail. empCode:' . $empCode);
+            throw new \ErrorException('Something error. Can not generate attendance detail. empCode: ' . $empCode);
+        }
+        
+        $totalWorkingDays = $standardWorkingDay + $standardWorkingDayProbation;
 
         $rspInsert = $this->zohoLib->insertRecord($monthlyWorkingTimeFormLinkName, $inputData, 'yyyy-MM-dd');
         if (!isset($rspInsert['result']) || !isset($rspInsert['result']['pkId'])) {
@@ -422,5 +448,24 @@ class PushMonthyWorkingTimePerEmployeeToZoho implements ShouldQueue
                 $value = $vars[$fieldLabel] ?? '';
         }
         return $value;
+    }
+
+    /**
+    * removeExistTabularZoho
+    */
+    private function removeExistTabularZoho(&$tabularData, $existMonthlyData, $formEav)
+    {
+        $sections = $formEav->sections;
+        if (!$sections->isEmpty()) {
+            foreach ($sections as $section) {
+                $tabularExistInZoho = $existMonthlyData['tabularSections'][$section->section_name] ?? [];
+                if (!empty($tabularExistInZoho)) {
+                    foreach ($tabularExistInZoho as $value) {
+                        $tabularData[$section->section_id]['delete'][] = $value['tabular.ROWID'];
+
+                    }
+                }
+            }
+        }
     }
 }

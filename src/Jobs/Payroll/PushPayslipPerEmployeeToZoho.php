@@ -16,7 +16,7 @@ use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Env;
 use Illuminate\Support\Facades\Log;
 
-class PushMonthyWorkingTimePerEmployeeToZoho implements ShouldQueue
+class PushPayslipPerEmployeeToZoho implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 

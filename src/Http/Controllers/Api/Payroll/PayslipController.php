@@ -147,7 +147,7 @@ class PayslipController extends PayrollController
             $responseUpdatePayslip = $this->zohoLib->updateRecord($payslipFormLinkName, $inputData, $tabularData, $payslipZohoId);
             $payslipLogDetails[] = $responseUpdatePayslip;
             if (!isset($responseUpdatePayslip['result']) || !isset($responseUpdatePayslip['result']['pkId'])) {
-                return $this->sendError($request, 'Something error. Can not update exist payslip with zoho id : '. $payslipZohoId, $responseUpdatePayslip);
+                return $this->sendError($request, 'Something error. Can not update exist payslip with zoho id : '. $payslipZohoId, [$responseUpdatePayslip, $inputData, $tabularData]);
             }
         } else {
             $rspInsert = $this->zohoLib->insertRecord($payslipFormLinkName, $inputData, 'yyyy-MM-dd');
@@ -320,11 +320,29 @@ class PayslipController extends PayrollController
 
         foreach ($sections as $section) {
             $tabularExist = $payslipExist['TabularSections'][$section->section_name] ?? [];
-            if (!empty($tabularExist)) {
-                foreach ($tabularExist as $rowId => $tabular) {
-                    $tabularAction[$section->section_id]['delete'][] = $rowId;
+            if (!empty($tabularExist[0])) {
+                if ($section->section_name == "Chi tiết lương cơ bản") {
+                    $this->basicSalaryTabular($tabularAction, $section->section_id, 'update', $keyWithVals , $tabularExist[0]['tabular.ROWID']);
+                    continue;
+                }
+
+                if ($section->section_name == "Chi tiết lương KPI") {
+                    $this->kpiSalaryTabular($tabularAction, $section->section_id, 'update', $keyWithVals , $tabularExist[0]['tabular.ROWID']);
+                    continue;
+                }
+
+            } else {
+                if ($section->section_name == "Chi tiết lương cơ bản") {
+                    $this->basicSalaryTabular($tabularAction, $section->section_id, 'add', $keyWithVals);
+                    continue;
+                }
+
+                if ($section->section_name == "Chi tiết lương KPI") {
+                    $this->kpiSalaryTabular($tabularAction, $section->section_id, 'add', $keyWithVals);
+                    continue;
                 }
             }
+            
             // if ($section->section_name == "Total Salary/Tổng lương") {
 
             // }
@@ -336,44 +354,58 @@ class PayslipController extends PayrollController
             // if ($section->section_name == "Total Deduction/Tổng giám trừ") {
                 
             // }
-
-            if ($section->section_name == "Chi tiết lương cơ bản") {
-                $tabularAction[$section->section_id]['add'][] = [
-                    'basic_salary' => convert_decimal_length($keyWithVals['muc_luong_co_ban'], 0) ?? '',
-                    'insurance_salary' => $keyWithVals['luong_dong_bao_hiem'] ?? '', // note
-                    'official_basic_salary' => convert_decimal_length($keyWithVals['luong_chinh_thuc_theo_ngay_cong'], 0) ?? '',
-                    'actual_basic_salary' => convert_decimal_length($keyWithVals['luong_thuc_linh_co_ban'], 0) ?? '',
-                    'insurance_month' => $keyWithVals['so_thang_trich_bh'] ?? '',
-                    'union_fee' => $keyWithVals['doan_phi_cong_doan'] ?? '',
-                    'si_employee' => $keyWithVals['bhxh_nv'] ?? '',
-                    'hi_employee' => $keyWithVals['bhyt_nv'] ?? '',
-                    'unemployment_fee' => $keyWithVals['bhtn_nv'] ?? '',
-                    'other_deduction' => $keyWithVals['truy_thu_khac'] ?? '',
-                    'si_reimbursement' => $keyWithVals['hoan_bhxh'] ?? '',
-                    'union_fund' => $keyWithVals['kinh_phi_cong_doan'] ?? '',
-                    'si_company' => $keyWithVals['bhxh_cong_ty'] ?? '',
-                    'accident_insurance' => $keyWithVals['bh_tai_nan_lao_dong_benh_nghe_nghiep'] ?? '',
-                    'hi_company' => $keyWithVals['bhyt_cong_ty'] ?? '',
-                    'unemployement_company' => $keyWithVals['bhtn_cong_ty'] ?? '',
-                    'total_refund_tax' => $keyWithVals['tong_hoan_thue_tncn'] ?? '',
-                ];
-            }
-
-            if ($section->section_name == "Chi tiết lương KPI") {
-                $tabularAction[$section->section_id]['add'][] = [
-                    'kpi_salary' => $keyWithVals['thu_nhap_theo_kpi'] ?? '',
-                    'percent_KPI' => $keyWithVals['percent_KPI'] ?? '', // note
-                    'kpi_total_salary' => $keyWithVals['tong_thu_nhap_theo_kpi'] ?? '',
-                    'actual_KPI_salary' => $keyWithVals['actual_KPI_salary'] ?? '',
-                    'meal_subsidy' => $keyWithVals['phu_cap_an_trua'] ?? '',
-                    'fuel_subsidy' => $keyWithVals['phu_cap_xang_xe'] ?? '',
-                    'mobile_subsidy' => $keyWithVals['phu_cap_dien_thoai'] ?? '',
-                    'overtime_allowance' => $keyWithVals['so_tien_lam_ngoai_gio'] ?? '',
-                ];
-            }
         }
 
         return $tabularAction;
+    }
+
+    private function basicSalaryTabular(&$tabularAction, $sectionId,  $keyAction, $keyWithVals , $rowId = null)
+    {
+        $tabularRow = [
+            'basic_salary' => convert_decimal_length($keyWithVals['muc_luong_co_ban'], 0) ?? '',
+            'insurance_salary' => $keyWithVals['luong_dong_bao_hiem'] ?? '', // note
+            'official_basic_salary' => convert_decimal_length($keyWithVals['luong_chinh_thuc_theo_ngay_cong'], 0) ?? '',
+            'actual_basic_salary' => convert_decimal_length($keyWithVals['luong_thuc_linh_co_ban'], 0) ?? '',
+            'insurance_month' => $keyWithVals['so_thang_trich_bh'] ?? '',
+            'union_fee' => $keyWithVals['doan_phi_cong_doan'] ?? '',
+            'si_employee' => $keyWithVals['bhxh_nv'] ?? '',
+            'hi_employee' => $keyWithVals['bhyt_nv'] ?? '',
+            'unemployment_fee' => $keyWithVals['bhtn_nv'] ?? '',
+            'other_deduction' => $keyWithVals['truy_thu_khac'] ?? '',
+            'si_reimbursement' => $keyWithVals['hoan_bhxh'] ?? '',
+            'union_fund' => $keyWithVals['kinh_phi_cong_doan'] ?? '',
+            'si_company' => $keyWithVals['bhxh_cong_ty'] ?? '',
+            'accident_insurance' => $keyWithVals['bh_tai_nan_lao_dong_benh_nghe_nghiep'] ?? '',
+            'hi_company' => $keyWithVals['bhyt_cong_ty'] ?? '',
+            'unemployement_company' => $keyWithVals['bhtn_cong_ty'] ?? '',
+            'total_refund_tax' => $keyWithVals['tong_hoan_thue_tncn'] ?? '',
+        ];
+
+        if (!is_null($rowId)) {
+            $tabularAction[$sectionId][$keyAction][$rowId] = $tabularRow;
+        } else {
+            $tabularAction[$sectionId][$keyAction][] = $tabularRow;
+        }
+    }
+
+    private function kpiSalaryTabular(&$tabularAction, $sectionId,  $keyAction, $keyWithVals , $rowId = null)
+    {
+        $tabularRow = [
+            'kpi_salary' => $keyWithVals['thu_nhap_theo_kpi'] ?? '',
+            'percent_KPI' => $keyWithVals['percent_KPI'] ?? '', // note
+            'kpi_total_salary' => $keyWithVals['tong_thu_nhap_theo_kpi'] ?? '',
+            'actual_KPI_salary' => $keyWithVals['actual_KPI_salary'] ?? '',
+            'meal_subsidy' => $keyWithVals['phu_cap_an_trua'] ?? '',
+            'fuel_subsidy' => $keyWithVals['phu_cap_xang_xe'] ?? '',
+            'mobile_subsidy' => $keyWithVals['phu_cap_dien_thoai'] ?? '',
+            'overtime_allowance' => $keyWithVals['so_tien_lam_ngoai_gio'] ?? '',
+        ];
+
+        if (!is_null($rowId)) {
+            $tabularAction[$sectionId][$keyAction][$rowId] = $tabularRow;
+        } else {
+            $tabularAction[$sectionId][$keyAction][] = $tabularRow;
+        }
     }
 
 }

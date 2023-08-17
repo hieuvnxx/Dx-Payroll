@@ -36,7 +36,7 @@ class DxServiceProvider extends ServiceProvider
     public function loadCommands()
     {
         $arrayCommands = [];
-        $commandDir = glob(__DIR__ . '\Console\Commands\*');
+        $commandDir = glob(__DIR__ . '/Console/Commands/*');
         foreach ($commandDir as $commandFile) {
             $arrayCommands[] = DxServiceProvider::DX_PAYROLL_NAMESPACE . '\Console\Commands\\'  .pathinfo($commandFile, PATHINFO_FILENAME);
         }

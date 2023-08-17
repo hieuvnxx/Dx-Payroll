@@ -459,7 +459,7 @@ class PushMonthyWorkingTimePerEmployeeToZoho implements ShouldQueue
         if (!$sections->isEmpty()) {
             foreach ($sections as $section) {
                 $tabularExistInZoho = $existMonthlyData['tabularSections'][$section->section_name] ?? [];
-                if (!empty($tabularExistInZoho)) {
+                if (!empty($tabularExistInZoho[0])) {
                     foreach ($tabularExistInZoho as $value) {
                         $tabularData[$section->section_id]['delete'][] = $value['tabular.ROWID'];
 

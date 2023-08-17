@@ -37,6 +37,10 @@ class ZohoRecordValue extends Model
         return $this->belongsTo(ZohoSection::class, 'id', 'section_id');
     }
 
+    protected $casts = [
+        'row_id' => 'string',
+    ];
+
     public static function createOrUpdateZohoRecordValue($attributes, $zohoRecord, $zohoData, $rowId = 0)
     {
         $arrayKeys = array_keys($zohoData);

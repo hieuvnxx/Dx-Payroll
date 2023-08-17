@@ -55,13 +55,24 @@ class UpdateController extends BaseController
                 return $this->sendError($request, ' ::: $this->zohoForm ::: Not found form in database');
             }
 
-            $zohoRecord = $this->zohoRecord->where('form_id', $zohoForm->id)
-                                           ->where('zoho_id', $zohoID)
-                                           ->first();
+            $zohoRecord = $this->zohoRecord->where('dx_zoho_records.form_id', $zohoForm->id)->where('dx_zoho_records.zoho_id', strval($zohoID))
+            ->with(['values' => function ($query) {
+                $query->join('dx_zoho_record_fields', 'dx_zoho_record_fields.id', '=', 'field_id')
+                    ->join('dx_zoho_sections', 'dx_zoho_sections.id', '=', 'dx_zoho_record_fields.section_id', 'left outer');
+            }])->first();
 
             if (is_null($zohoRecord)) {
                 Log::channel('dx')->info(self::class .' ::: ERROR $zohoRecord empty ');
                 return $this->sendError($request, 'zohoRecord empty');
+            }
+
+            $oldRows = [];
+            if ($zohoRecord->values->isNotEmpty()) {
+                $oldRows = $zohoRecord->values->filter( function ($item) {
+                    if ($item['row_id']) {
+                        return $item;
+                    }
+                })->keyBy('row_id')->toArray();
             }
 
             $zohoFormSections = $zohoForm->sections->keyBy('section_name');
@@ -69,23 +80,19 @@ class UpdateController extends BaseController
                 foreach ($responseDataRecord['tabularSections'] as $tabularName => $values) {
                     if (!isset($zohoFormSections[$tabularName])) continue;
 
-                    if (empty($values[0])) {
-                        $this->zohoRecordValue->where('record_id', $zohoRecord->id)
-                        ->where('section_id', $zohoFormSections[$tabularName]->section_id)
-                        ->delete();
-                        continue;
-                    } 
-
                     foreach ($values as $value) {
+                        if (isset($oldRows[$value['tabular.ROWID']])) {
+                            unset($oldRows[$value['tabular.ROWID']]);
+                        }
                         $this->updateZohoRecordValue($zohoFormSections[$tabularName]->attributes->keyBy('field_label'), $zohoRecord, $value, $value['tabular.ROWID']);
                     }
                 }
                 unset($responseDataRecord['tabularSections']);
-            } elseif (!$zohoFormSections->isEmpty()) {
-                foreach ($zohoFormSections as $section) {
-                    $this->zohoRecordValue->where('record_id', $zohoRecord->id)
-                    ->where('section_id', $section->section_id)
-                    ->delete();
+            }
+
+            if (!empty($oldRows)) {
+                foreach ($oldRows as $row) {
+                    $this->zohoRecordValue->where('record_id', $zohoRecord->id)->where('row_id', $row['row_id'])->delete();
                 }
             }
 
@@ -115,10 +122,13 @@ class UpdateController extends BaseController
                     $value = $zohoData[$fieldLabel];
                 }
 
-                $this->zohoRecordValue->where('record_id', $zohoRecord->id)
-                ->where('field_id', $attributes[$fieldLabel]->id)
-                ->where('row_id', $rowId)
-                ->update(['value' => $value]);
+                $mactchs = [
+                    'record_id' => $zohoRecord->id,
+                    'field_id' => $attributes[$fieldLabel]->id,
+                    'row_id' => $rowId,
+                ];
+
+                $this->zohoRecordValue->updateOrCreate($mactchs, ['value' => $value]);
             }
         }
     }

@@ -44,3 +44,15 @@ function convert_decimal_length($number, $length = 2)
 
     return number_format($number,$length,'.','');
 }
+
+function sum_number(...$vars)
+{
+    $sum = 0;
+
+    foreach($vars as $var) {
+        if (empty($var) || !is_numeric($var)) continue;
+        $sum += floatval($var);
+    }
+
+    return $sum;
+}

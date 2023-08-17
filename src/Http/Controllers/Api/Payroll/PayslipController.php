@@ -320,14 +320,14 @@ class PayslipController extends PayrollController
 
         foreach ($sections as $section) {
             $tabularExist = $payslipExist['TabularSections'][$section->section_name] ?? [];
-            if (!empty($tabularExist[0])) {
+            if (!empty($tabularExist)) {
                 if ($section->section_name == "Chi tiết lương cơ bản") {
-                    $this->basicSalaryTabular($tabularAction, $section->section_id, 'update', $keyWithVals , $tabularExist[0]['tabular.ROWID']);
+                    $this->basicSalaryTabular($tabularAction, $section->section_id, 'update', $keyWithVals , array_key_first($tabularExist));
                     continue;
                 }
 
                 if ($section->section_name == "Chi tiết lương KPI") {
-                    $this->kpiSalaryTabular($tabularAction, $section->section_id, 'update', $keyWithVals , $tabularExist[0]['tabular.ROWID']);
+                    $this->kpiSalaryTabular($tabularAction, $section->section_id, 'update', $keyWithVals , array_key_first($tabularExist));
                     continue;
                 }
 

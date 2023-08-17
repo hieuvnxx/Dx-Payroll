@@ -4,12 +4,14 @@
 namespace Dx\Payroll\Http\Controllers\Api\Payroll;
 
 use Carbon\Carbon;
+use DivisionByZeroError;
 use Dx\Payroll\Http\Controllers\Api\Payroll\PayrollController;
 use Dx\Payroll\Http\Requests\ApiPayslipByCode;
 use Dx\Payroll\Integrations\ZohoPeopleIntegration;
 use Dx\Payroll\Repositories\ZohoFormInterface;
 use Dx\Payroll\Repositories\ZohoRecordInterface;
 use Dx\Payroll\Repositories\ZohoRecordValueInterface;
+use Exception;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Env;
 use Illuminate\Support\Facades\DB;
@@ -168,20 +170,30 @@ class PayslipController extends PayrollController
     private function replaceSystemDataToFactor(&$cacheDataForm, $formLinkName, $fieldLabel, $searchParams = [], $zohoId = null)
     {
         if (!empty($searchParams) && !empty($cacheDataForm[$formLinkName.$fieldLabel])) {
-            return $cacheDataForm[$formLinkName.$fieldLabel][$fieldLabel];
+            return $cacheDataForm[$formLinkName.$fieldLabel][$fieldLabel] ?? '';
         } elseif(!empty($cacheDataForm[$formLinkName])) {
-            return $cacheDataForm[$formLinkName][$fieldLabel];
+            return $cacheDataForm[$formLinkName][$fieldLabel] ?? '';
         }
 
         $val = null;
         if (is_null($zohoId)) {
-            $formData = $this->zohoRecord->getRecords($formLinkName, 0, 200, $searchParams)[0];
+            $formData = $this->zohoRecord->getRecords($formLinkName, 0, 200, $searchParams);
             if (!empty($searchParams)) {
-                $cacheDataForm[$formLinkName.$fieldLabel] = $formData;
-                $val = $cacheDataForm[$formLinkName.$fieldLabel][$fieldLabel];
+                if (!empty($formData)) {
+                    $cacheDataForm[$formLinkName.$fieldLabel] = $formData[0];
+                    $val = $cacheDataForm[$formLinkName.$fieldLabel][$fieldLabel] ?? '';
+                } else {
+                    $cacheDataForm[$formLinkName.$fieldLabel] = $formData;
+                    $val = $cacheDataForm[$formLinkName.$fieldLabel][$fieldLabel] ?? '';
+                }
             } else {
-                $cacheDataForm[$formLinkName] = $formData;
-                $val = $cacheDataForm[$formLinkName][$fieldLabel];
+                if (!empty($formData)) {
+                    $cacheDataForm[$formLinkName] = $formData[0];
+                    $val = $cacheDataForm[$formLinkName][$fieldLabel] ?? '';
+                } else {
+                    $cacheDataForm[$formLinkName] = $formData;
+                    $val = $cacheDataForm[$formLinkName][$fieldLabel] ?? '';
+                }
             }
         } else {
             $formData = $this->zohoRecord->getRecordByZohoID($formLinkName, $zohoId);
@@ -202,7 +214,6 @@ class PayslipController extends PayrollController
         $constantConfigFormLinkName = Env::get('PAYROLL_CONSTANT_CONFIGURATION_FORM_LINK_NAME');
         $constantConfigs = $this->zohoRecord->getRecords($constantConfigFormLinkName);
         $constantConfig = $constantConfigs[0];
-
 
         list($fromSalary, $toSalary) = payroll_range_date($month, $constantConfig['from_date'], $constantConfig['to_date']);
         $fromSalary = Carbon::createFromFormat('Y-m-d', $fromSalary);
@@ -240,7 +251,6 @@ class PayslipController extends PayrollController
         }
 
         /** hard code */
-
         $response['tong_hoan_thue_tncn']['total'] = 0;
         $response['thue_tncn']['total'] = 0;
         $response['truy_thu_thue_tncn']['total'] = 0;
@@ -275,7 +285,11 @@ class PayslipController extends PayrollController
 
         foreach ($fomulaSources as $key => $fomula) {
             if(preg_match('/^[-+*\/()\d\.\s]+$/', $fomula)){
-                $keyWithVals[$key] = eval("return {$fomula};");
+                try {
+                    $keyWithVals[$key] = eval("return {$fomula};");
+                } catch (DivisionByZeroError  $e) {
+                    $keyWithVals[$key] = 0;
+                }
                 unset($fomulaSources[$key]);
                 foreach ($fomulaSources as &$fomula2) {
                     $fomula2 = preg_replace('/\b'.$key.'\b/u', $keyWithVals[$key], $fomula2);

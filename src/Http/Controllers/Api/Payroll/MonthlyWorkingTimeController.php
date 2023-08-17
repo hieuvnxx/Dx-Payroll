@@ -403,7 +403,6 @@ class MonthlyWorkingTimeController extends PayrollController
         return [$tabularAction, $paidLeave, $holidayCount, $standardWorkingTime, $standardWorkingDay,
          $standardWorkingDayProbation, $otMealAllowance, $weekdayHour, $weekNight, $weekendHour, $weekendNight, $holidayHour, $holidayNight];
     }
-
     
     /**
     * return all overtime request approved

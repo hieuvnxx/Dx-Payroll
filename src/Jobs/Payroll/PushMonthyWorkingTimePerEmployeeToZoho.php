@@ -4,6 +4,7 @@ namespace Dx\Payroll\Jobs\Payroll;
 
 use Carbon\Carbon;
 use Dx\Payroll\Integrations\ZohoPeopleIntegration;
+use Dx\Payroll\Models\DateDimension;
 use Dx\Payroll\Repositories\ZohoFormInterface;
 use Dx\Payroll\Repositories\ZohoRecordInterface;
 use Dx\Payroll\Repositories\ZohoRecordValueInterface;
@@ -287,16 +288,17 @@ class PushMonthyWorkingTimePerEmployeeToZoho implements ShouldQueue
         $holidayHour = 0;
         $holidayNight = 0;
 
+        $arrayKeysDate = array_keys($dataShiftConfig);
+        $dateDimension = DateDimension::whereIn('date', $arrayKeysDate)->get()->keyBy('date')->toArray();
         foreach ($dataShiftConfig as $date => $item) {
             $workingHours = 0;
-            $leaveHours = 0;
             $leaveDays = 0;
             $holidayDays = 0;
             $isHoliday = false;
 
             $workingHours = date('H', strtotime($item['TotalHours'])) + date('i', strtotime($item['TotalHours'])) / 60;
             $workingDays = total_standard_working_day_by_working_hour($workingHours, $constantConfig);
-            if (!isset($item['isWeekend']) || (date('w', strtotime($date)) != 6 && date('w', strtotime($date)) != 0)) {
+            if (!isset($item['isWeekend']) && isset($dateDimension[$date]) && !$dateDimension[$date]['is_weekend']) {
                 // ngày công tiêu chuẩn
                 $standardWorkingTime++;
                 if (str_contains(strtolower($item['Status']), "holiday") || str_contains(strtolower($item['Status']), "ngày lễ")) {
@@ -372,7 +374,6 @@ class PushMonthyWorkingTimePerEmployeeToZoho implements ShouldQueue
             }
 
             $sections = $formEav->sections;
-
             if (!$sections->isEmpty()) {
                 foreach ($sections as $section) {
                     $item['append_by_logic_code_actual_Date'] = $date;
@@ -392,7 +393,6 @@ class PushMonthyWorkingTimePerEmployeeToZoho implements ShouldQueue
          $standardWorkingDayProbation, $otMealAllowance, $weekdayHour, $weekNight, $weekendHour, $weekendNight, $holidayHour, $holidayNight];
     }
 
-    
     /**
     * return all overtime request approved
     */

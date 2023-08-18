@@ -315,6 +315,7 @@ class PayslipController extends PayrollController
                         $bonus['amount'] = $bonus['Amount1'];
                         $total = $constantVals['thuong_le']['total'];
                         $bonusAmount = $bonus['amount'];
+                        $bonus['amount_bonus_payslip'] = $bonusAmount;
                                             
                         $constantVals['thuong_le']['total'] = $total + $bonusAmount;
                         $constantVals['thuong_le']['detai'][] = $bonus;

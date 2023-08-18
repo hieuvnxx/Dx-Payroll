@@ -60,16 +60,15 @@ class ZohoRecordRepository extends BaseRepository implements ZohoRecordInterface
             });
 
             $response = $this->where('dx_zoho_records.form_id', $zohoForm->id);
-        
-            $response->whereHas('values', function ($query) use ($paramsById) {
-                foreach ($paramsById as $param) {
-                    $query->where('field_id', $param->id);
-                    $query->where('value', $param->value);
-                }
-            });
+
+            foreach ($paramsById as $param) {
+                $response->whereHas('values', function ($query) use ($param) {
+                        $query->where('field_id', $param->id);
+                        $query->where('value', $param->value);
+                });
+            }
 
             $responseSearch = $response->skip($offset)->take($limit)->get();
-
             if ($responseSearch->isEmpty()) {
                 return  $this->formatRecords(collect([]));
             }

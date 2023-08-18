@@ -129,8 +129,6 @@ class PayslipController extends PayrollController
         $inputData['standard_working_day']           = intval($standardWorkingDay);
         $inputData['standard_working_day_probation'] = intval($standardWorkingDayProbation);
 
-        dd($inputData);
-
         /* check if exist record */
         $payslipExists = $this->zohoRecord->getRecords($payslipFormLinkName, 0, 1, [
             'code' => $code,

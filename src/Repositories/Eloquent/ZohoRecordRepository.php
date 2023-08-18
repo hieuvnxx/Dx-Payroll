@@ -33,7 +33,7 @@ class ZohoRecordRepository extends BaseRepository implements ZohoRecordInterface
      */
     public function deleteRecords($formName, $ZohoID)
     {
-        return $this->deleteWhere(['form_id' => $formName, 'zoho_id'=> $ZohoID]);
+        return $this->deleteWhere(['form_id' => $formName, 'zoho_id'=> strval($ZohoID)]);
     }
 
     /**
@@ -47,28 +47,49 @@ class ZohoRecordRepository extends BaseRepository implements ZohoRecordInterface
             throw new \ErrorException('Not found form name in database');
         }
 
-        $response = $this->where('dx_zoho_records.form_id', $zohoForm->id);
-        
-        /*
-        * pending update for search multiple params and criteria
-        * suggest writing on new function
-        */
         if (!empty($params)) {
-            foreach ($params as $key => $value) {
-                $response->whereHas('values', function($query) use ($key, $value) {
-                    $query->with(['courses.fields' => function($query) use ($key, $value) {
-                        $query->where('field_label', $key);
-                    }])->where('value', strval($value));
-                });
-            }
-        }
+            $attributes = $zohoForm->attributes;
+
+            $paramsById = $attributes->reject( function($item) use ($params) {
+                    return !isset($params[$item->field_label]);
+            })->map( function ($item) use ($params) {
+                if (isset($params[$item->field_label])) {
+                    $item->value = $params[$item->field_label];
+                    return $item;
+                }
+            });
+
+            $response = $this->where('dx_zoho_records.form_id', $zohoForm->id);
         
-        $response->with(['values' => function ($query) {
+            $response->whereHas('values', function ($query) use ($paramsById) {
+                foreach ($paramsById as $param) {
+                    $query->where('field_id', $param->id);
+                    $query->where('value', $param->value);
+                }
+            });
+
+            $responseSearch = $response->skip($offset)->take($limit)->get();
+
+            if ($responseSearch->isEmpty()) {
+                return  $this->formatRecords(collect([]));
+            }
+
+            $responseSearch = $responseSearch->keyBy('zoho_id')->keys()->toArray();
+
+            $response = $this->whereIn('zoho_id', $responseSearch)->with(['values' => function ($query) {
+                $query->join('dx_zoho_record_fields', 'dx_zoho_record_fields.id', '=', 'field_id')
+                    ->join('dx_zoho_sections', 'dx_zoho_sections.id', '=', 'dx_zoho_record_fields.section_id', 'left outer');
+            }])->skip($offset)->take($limit)->get();
+
+            return  $this->formatRecords($response);
+        }
+
+        $response = $this->where('dx_zoho_records.form_id', $zohoForm->id)->with(['values' => function ($query) {
             $query->join('dx_zoho_record_fields', 'dx_zoho_record_fields.id', '=', 'field_id')
                 ->join('dx_zoho_sections', 'dx_zoho_sections.id', '=', 'dx_zoho_record_fields.section_id', 'left outer');
-        }]);
+        }])->skip($offset)->take($limit)->get();
 
-        return  $this->formatRecords($response->skip($offset)->take($limit)->get());
+        return  $this->formatRecords($response);
     }
 
     /**

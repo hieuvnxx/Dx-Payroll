@@ -7,8 +7,12 @@ use Carbon\Carbon;
 use Dx\Payroll\Http\Controllers\Api\Payroll\PayrollController;
 use Dx\Payroll\Http\Requests\ApiWorkingTimeAll;
 use Dx\Payroll\Http\Requests\ApiWorkingTimeByCode;
+use Dx\Payroll\Integrations\ZohoPeopleIntegration;
 use Dx\Payroll\Jobs\Payroll\PushMonthyWorkingTimePerEmployeeToZoho;
 use Dx\Payroll\Models\DateDimension;
+use Dx\Payroll\Repositories\ZohoFormInterface;
+use Dx\Payroll\Repositories\ZohoRecordInterface;
+use Dx\Payroll\Repositories\ZohoRecordValueInterface;
 use Illuminate\Support\Env;
 
 /**
@@ -16,6 +20,20 @@ use Illuminate\Support\Env;
  */
 class MonthlyWorkingTimeController extends PayrollController
 {
+    protected $zohoLib;
+    protected $zohoForm;
+    protected $zohoRecord;
+    protected $zohoRecordValue;
+    
+    public function __construct(ZohoFormInterface $zohoForm, ZohoRecordInterface $zohoRecord, ZohoRecordValueInterface $zohoRecordValue)
+    {
+        $this->zohoLib = ZohoPeopleIntegration::getInstance();
+
+        $this->zohoForm = $zohoForm;
+        $this->zohoRecord = $zohoRecord;
+        $this->zohoRecordValue = $zohoRecordValue;
+    }
+
     public function processAll(ApiWorkingTimeAll $request)
     {
         $month   = $request->month;

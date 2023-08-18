@@ -11,16 +11,29 @@ use Dx\Payroll\Integrations\ZohoPeopleIntegration;
 use Dx\Payroll\Repositories\ZohoFormInterface;
 use Dx\Payroll\Repositories\ZohoRecordInterface;
 use Dx\Payroll\Repositories\ZohoRecordValueInterface;
-use Exception;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Env;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 /**
  * insert database zoho form
  */
 class PayslipController extends PayrollController
 {
+    protected $zohoLib;
+    protected $zohoForm;
+    protected $zohoRecord;
+    protected $zohoRecordValue;
+    
+    public function __construct(ZohoFormInterface $zohoForm, ZohoRecordInterface $zohoRecord, ZohoRecordValueInterface $zohoRecordValue)
+    {
+        $this->zohoLib = ZohoPeopleIntegration::getInstance();
+
+        $this->zohoForm = $zohoForm;
+        $this->zohoRecord = $zohoRecord;
+        $this->zohoRecordValue = $zohoRecordValue;
+    }
+
     /**
     * 
     */
@@ -47,9 +60,9 @@ class PayslipController extends PayrollController
         $monthly = str_replace('-', '/', $month);
         $code = $empCode . "-" . $monthly;
 
-        $masterDataFormCollect = $this->getAllDataFormLinkName($formMasterDataFormLinkName);
-        $salaryFactorCollect = $this->getAllDataFormLinkName($salaryFactorFormLinkName);
-        $formulaSourceCollect = $this->getAllDataFormLinkName($formulaSourceFormLinkName);
+        $masterDataFormCollect = $this->getAllDataFormLinkName($formMasterDataFormLinkName, $this->zohoRecord);
+        $salaryFactorCollect = $this->getAllDataFormLinkName($salaryFactorFormLinkName, $this->zohoRecord);
+        $formulaSourceCollect = $this->getAllDataFormLinkName($formulaSourceFormLinkName, $this->zohoRecord);
 
         $cacheDataForm = [];
         /** formEav*/
@@ -61,12 +74,6 @@ class PayslipController extends PayrollController
         /** employee information */
         $employeeData = $this->zohoRecord->getRecords($employeeFormLinkName, 0, 200, [$employeeIdNumberFieldLabel => $empCode])[0];
         $cacheDataForm[$employeeFormLinkName] = $employeeData;
-
-        /** fetch data working time for employee */
-        $monthlyWorkingsByCode = $this->zohoRecord->getRecords($monthlyWorkingTimeFormLinkName, 0, 200, ['code' => $code, 'salary_period' => $monthly]);
-        $existMonthlyWorkingTime = !empty($monthlyWorkingsByCode) ? $monthlyWorkingsByCode[0] : [];
-        $standardWorkingDay = $existMonthlyWorkingTime['standard_working_day'] ?? 0;
-        $standardWorkingDayProbation = $existMonthlyWorkingTime['standard_working_day_probation'] ?? 0;
 
         /* assign value to key */
         $keyWithVals = $salaryFactorCollect->reject(function ($factor) {
@@ -117,10 +124,8 @@ class PayslipController extends PayrollController
             return [ $factor['abbreviation'] => $fomulaString];
         })->values()->collapse()->all();
 
-        list($constantConfig, $constantVals) = $this->mappingConstantVals($month, $employeeData);
-        $this->mappingContantValueToFomulaValsAndKeyVals($constantVals, $fomulaVals, $keyWithVals);
-        $this->sortFomulaSource($fomulaVals, $keyWithVals);
-        $this->caculateFomula($fomulaVals, $keyWithVals, $constantConfig);
+        $standardWorkingDay = $keyWithVals['ngay_cong_chinh_thuc'] ?? 0;
+        $standardWorkingDayProbation = $keyWithVals['ngay_cong_thu_viec'] ?? 0;
 
         $inputData = [];
         $inputData['employee1']                      = $employeeData['Zoho_ID'];
@@ -136,6 +141,10 @@ class PayslipController extends PayrollController
         ]);
         $payslipExist = isset($payslipExists[0]) ? $payslipExists[0] : [];
 
+        list($constantConfig, $constantVals) = $this->mappingConstantVals($month, $employeeData, $payslipExist);
+        $this->mappingContantValueToFomulaValsAndKeyVals($constantVals, $fomulaVals, $keyWithVals);
+        $this->sortFomulaSource($fomulaVals, $keyWithVals);
+        $this->caculateFomula($fomulaVals, $keyWithVals, $constantConfig);
         $payslipLogDetails = [];
 
         $tabularData = $this->processTabularData($formEav, $constantVals, $keyWithVals, $payslipExist);
@@ -146,6 +155,8 @@ class PayslipController extends PayrollController
             if (!isset($responseUpdatePayslip['result']) || !isset($responseUpdatePayslip['result']['pkId'])) {
                 return $this->sendError($request, 'Something error. Can not update exist payslip with zoho id : '. $payslipZohoId, [$responseUpdatePayslip, $inputData, $tabularData]);
             }
+
+            Log::channel('dx')->info("update exist payslip with zoho id [$payslipZohoId]", [$responseUpdatePayslip, $inputData, $tabularData]);
         } else {
             $rspInsert = $this->zohoLib->insertRecord($payslipFormLinkName, $inputData, 'yyyy-MM-dd');
             $payslipLogDetails[] = $rspInsert;
@@ -159,6 +170,8 @@ class PayslipController extends PayrollController
             if (!isset($rspUpdate['result']) || !isset($rspUpdate['result']['pkId'])) {
                 return $this->sendError($request, 'Something error. Can not update payslip with zoho id : '. $zohoId, [$rspUpdate, $inputData, $tabularData]);
             }
+
+            Log::channel('dx')->info("create and update [$zohoId]", [$rspUpdate, $inputData, $tabularData]);
         }
 
         return $this->sendResponse($request, 'Successfully.', $payslipLogDetails);
@@ -190,7 +203,7 @@ class PayslipController extends PayrollController
     {
         if (!empty($searchParams) && !empty($cacheDataForm[$formLinkName.$fieldLabel])) {
             return $cacheDataForm[$formLinkName.$fieldLabel][$fieldLabel] ?? '';
-        } elseif(!empty($cacheDataForm[$formLinkName])) {
+        } elseif(!empty($cacheDataForm[$formLinkName]) && empty($searchParams)) {
             return $cacheDataForm[$formLinkName][$fieldLabel] ?? '';
         }
 
@@ -226,13 +239,15 @@ class PayslipController extends PayrollController
     /**
     * mappingConstantVals
     */
-    private function mappingConstantVals($month, $employeeData)
+    private function mappingConstantVals($month, $employeeData, $payslipExist)
     {
         $constantVals = [];
 
+        // Khoản trừ cá nhân đi theo thông tin employee
         $constantVals['khoan_tru_ca_nhan']['total'] = 0;
         $constantVals['khoan_tru_ca_nhan']['detai'] = [];
 
+        // Các phụ cấp trong form Cấu hình hằng số thuộc bảng phụ cấp
         $constantVals['phu_cap_khac']['total'] = 0;
         $constantVals['phu_cap_khac']['detai'] = [];
         $constantVals['phu_cap_an_trua']['total'] = 0;
@@ -242,9 +257,11 @@ class PayslipController extends PayrollController
         $constantVals['phu_cap_dien_thoai']['total'] = 0;
         $constantVals['phu_cap_dien_thoai']['detai'] = [];
 
+        // Thưởng lễ được lấy từ form Cấu hình hằng số
         $constantVals['thuong_le']['total'] = 0;
         $constantVals['thuong_le']['detai'] = [];
 
+        // các trường hệ thống lấy từ payslip có sẵn để cập nhật lại công thức
         $constantVals['tong_hoan_thue_tncn']['total'] = 0;
         $constantVals['truy_thu_thue_tncn']['total'] = 0;
         $constantVals['truy_thu_khac']['total'] = 0;
@@ -275,7 +292,10 @@ class PayslipController extends PayrollController
                 $day = Carbon::createFromFormat('Y-m-d', $day);
                 if ($day->gte($fromSalary) && $day->lte($toSalary)) {
                     $total = $constantVals['thuong_le']['total'] ?? 0;
-                    $bonusAmount = (strtolower($employeeData['contract_type']) != 'thử việc') ? $bonus['probation_amount'] : $bonus['amount'];
+
+                    $bonusAmount = (strtolower($employeeData['contract_type']) == 'thử việc') ? $bonus['probation_amount'] : $bonus['amount'];
+
+                    $bonus['amount_bonus_payslip'] = $bonusAmount;
                     
                     $constantVals['thuong_le']['total'] = $total + $bonusAmount;
                     $constantVals['thuong_le']['detai'][] = $bonus;
@@ -285,27 +305,29 @@ class PayslipController extends PayrollController
 
         if (!empty($employeeData['TabularSections']['Bonus & Others'])) {
             foreach ($employeeData['TabularSections']['Bonus & Others'] as $bonus) {
-     		if (empty($bonus['Date'])) continue;
+     		    if (empty($bonus['Date'])) continue;
 
                 $day = Carbon::createFromFormat('d-F-Y', $bonus['Date'])->format('Y-m-d');
                 $day = Carbon::createFromFormat('Y-m-d', $day);
-		if ($day->gte($fromSalary) && $day->lte($toSalary)) {
-		    if ($bonus['Category'] == 'Income/Thu nhập') {
-			$bonus['bonus_type'] = 'Thưởng cá nhân';
-	                $bonus['amount'] = $bonus['Amount1'];
-	                $total = $constantVals['thuong_le']['total'] ?? 0;
-	                $bonusAmount = $bonus['amount'];
-								     
-		        $constantVals['thuong_le']['total'] = $total + $bonusAmount;
-	                $constantVals['thuong_le']['detai'][] = $bonus;
+                if ($day->gte($fromSalary) && $day->lte($toSalary)) {
+                    if ($bonus['Category'] == 'Income/Thu nhập') {
+                        $bonus['bonus_type'] = 'Thưởng cá nhân';
+                        $bonus['amount'] = $bonus['Amount1'];
+                        $total = $constantVals['thuong_le']['total'];
+                        $bonusAmount = $bonus['amount'];
+                                            
+                        $constantVals['thuong_le']['total'] = $total + $bonusAmount;
+                        $constantVals['thuong_le']['detai'][] = $bonus;
                     } elseif ($bonus['Category'] == 'Deduction/Giảm trừ') {
-	                $bonus['amount'] = $bonus['Amount1'];
-			$total = $constantVals['thuong_le']['total'] ?? 0;
-			$bonusAmount = $bonus['amount'];				
-			$constantVals['khoan_tru_ca_nhan']['total'] = $total + $bonusAmount;	
-			$constantVals['khoan_tru_ca_nhan']['detai'][] = $bonus;
-		    }
-		}
+                        $bonus['amount'] = $bonus['Amount1'];
+                        $total = $constantVals['thuong_le']['total'];
+                        $bonusAmount = $bonus['amount'];	
+                        $bonus['amount_bonus_payslip'] = $bonusAmount;
+                        
+                        $constantVals['khoan_tru_ca_nhan']['total'] = $total + $bonusAmount;	
+                        $constantVals['khoan_tru_ca_nhan']['detai'][] = $bonus;
+                    }
+                }
             }
         }
 
@@ -320,6 +342,23 @@ class PayslipController extends PayrollController
                 $constantVals['phu_cap_xang_xe']['detai'] = $row;
                 $constantVals['phu_cap_dien_thoai']['total'] = $row['phone_allowance'];
                 $constantVals['phu_cap_dien_thoai']['detai'] = $row;
+            }
+        }
+
+        if (!empty($payslipExist)) {
+            $basicSalaryTabular = $payslipExist['TabularSections']['Chi tiết lương cơ bản'];
+            if (empty($basicSalaryTabular)) {
+                $firstRowKpi = array_shift($kpiSalaryTabular);
+                $constantVals['tong_hoan_thue_tncn']['total'] = convert_decimal_length($firstRowKpi['total_refund_tax']);
+                $constantVals['truy_thu_khac']['total'] = convert_decimal_length($firstRowKpi['other_deduction']);
+                $constantVals['hoan_bhxh']['total'] = convert_decimal_length($firstRowKpi['si_reimbursement']);
+
+            }
+
+            $kpiSalaryTabular = $payslipExist['TabularSections']['Chi tiết lương KPI'];
+            if (empty($kpiSalaryTabular)) {
+                $firstRowKpi = array_shift($kpiSalaryTabular);
+                $constantVals['truy_thu_thue_tncn']['total'] = $firstRowKpi['tax_arrears'];
             }
         }
 
@@ -434,7 +473,7 @@ class PayslipController extends PayrollController
             foreach ($constantVals['thuong_le']['detai'] as $bonusDetail) {
                 $row = [
                     'bonus_type' => $bonusDetail['bonus_type'],
-                    'bonus_amount' => convert_decimal_length($bonusDetail['amount'], 0),
+                    'bonus_amount' => convert_decimal_length($bonusDetail['amount_bonus_payslip'], 0),
                 ];
 
                 $tabularAction[$section->section_id]['add'][] = $row;
@@ -475,7 +514,7 @@ class PayslipController extends PayrollController
         foreach ($deductionType as $key => $val) {
             $tabularAction[$section->section_id]['add'][] = [
                 'deduction_type' => $key,
-                'deduction_amount' => $val,
+                'deduction_amount' => convert_decimal_length($val, 0),
             ];
         }
 
@@ -596,7 +635,7 @@ class PayslipController extends PayrollController
     {
         $tabularRow = [
             'kpi_salary' => convert_decimal_length($keyWithVals['thu_nhap_theo_kpi'], 0),
-            'percent_KPI' => convert_decimal_length($keyWithVals['percent_KPI'] ?? ''), // pending
+            'percent_KPI' => convert_decimal_length($keyWithVals['phan_tram_hoan_thanh'] ?? 0),
             'kpi_total_salary' => convert_decimal_length($keyWithVals['tong_thu_nhap_theo_kpi'], 0),
             'actual_KPI_salary' => convert_decimal_length($keyWithVals['luong_thuc_linh_kpi'], 0),
             'meal_subsidy' => convert_decimal_length($keyWithVals['phu_cap_an_trua'], 0),

@@ -334,14 +334,16 @@ class PushMonthyWorkingTimePerEmployeeToZoho implements ShouldQueue
                     $holidayDays = 1;
                     $isHoliday = true;
                 } else {
-                    if (!empty($leaves) && array_key_exists($date, $leaves)) {
-                        // ngày nghỉ phép
-                        $leaveDays = (float)$leaves[$date]['leave_day'];
-                        $totalDays = $leaveDays + $workingDays;
-                        if ($totalDays > 1) {
-                            $workingDays = 1 - $leaveDays;
+                    if (!str_contains(strtolower($item['Status']), "maternity") && !str_contains(strtolower($item['Status']), "thai sản")) {
+                        if (!empty($leaves) && array_key_exists($date, $leaves)) {
+                            // ngày nghỉ phép
+                            $leaveDays = (float)$leaves[$date]['leave_day'];
+                            $totalDays = $leaveDays + $workingDays;
+                            if ($totalDays > 1) {
+                                $workingDays = 1 - $leaveDays;
+                            }
+                            $paidLeave += $leaveDays;
                         }
-                        $paidLeave += $leaveDays;
                     }
 
                     // ngày thường
@@ -461,8 +463,7 @@ class PushMonthyWorkingTimePerEmployeeToZoho implements ShouldQueue
                 $tabularExistInZoho = $existMonthlyData['tabularSections'][$section->section_name] ?? [];
                 if (!empty($tabularExistInZoho[0])) {
                     foreach ($tabularExistInZoho as $value) {
-                        $tabularData[$section->section_id]['delete'][] = $value['tabular.ROWID'];
-
+                        $tabularData[$section->section_id]['delete'][] = strval($value['tabular.ROWID']);
                     }
                 }
             }

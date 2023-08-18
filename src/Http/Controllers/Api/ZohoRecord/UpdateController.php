@@ -78,7 +78,7 @@ class UpdateController extends BaseController
             $zohoFormSections = $zohoForm->sections->keyBy('section_name');
             if (!empty($responseDataRecord['tabularSections'])) {
                 foreach ($responseDataRecord['tabularSections'] as $tabularName => $values) {
-                    if (!isset($zohoFormSections[$tabularName])) continue;
+                    if (!isset($zohoFormSections[$tabularName]) || empty($values[0])) continue;
 
                     foreach ($values as $value) {
                         if (isset($oldRows[$value['tabular.ROWID']])) {

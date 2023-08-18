@@ -348,18 +348,17 @@ class PayslipController extends PayrollController
 
         if (!empty($payslipExist)) {
             $basicSalaryTabular = $payslipExist['TabularSections']['Chi tiết lương cơ bản'];
-            if (empty($basicSalaryTabular)) {
-                $firstRowKpi = array_shift($kpiSalaryTabular);
-                $constantVals['tong_hoan_thue_tncn']['total'] = convert_decimal_length($firstRowKpi['total_refund_tax']);
-                $constantVals['truy_thu_khac']['total'] = convert_decimal_length($firstRowKpi['other_deduction']);
-                $constantVals['hoan_bhxh']['total'] = convert_decimal_length($firstRowKpi['si_reimbursement']);
-
+            if (!empty($basicSalaryTabular)) {
+                $firstBasicSalary = array_shift($basicSalaryTabular);
+                $constantVals['tong_hoan_thue_tncn']['total'] = convert_decimal_length($firstBasicSalary['total_refund_tax']);
+                $constantVals['truy_thu_khac']['total'] = convert_decimal_length($firstBasicSalary['other_deduction']);
+                $constantVals['hoan_bhxh']['total'] = convert_decimal_length($firstBasicSalary['si_reimbursement']);
             }
 
             $kpiSalaryTabular = $payslipExist['TabularSections']['Chi tiết lương KPI'];
-            if (empty($kpiSalaryTabular)) {
+            if (!empty($kpiSalaryTabular)) {
                 $firstRowKpi = array_shift($kpiSalaryTabular);
-                $constantVals['truy_thu_thue_tncn']['total'] = $firstRowKpi['tax_arrears'];
+                $constantVals['truy_thu_thue_tncn']['total'] = convert_decimal_length($firstRowKpi['tax_arrears']);
             }
         }
 

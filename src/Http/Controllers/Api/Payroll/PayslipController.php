@@ -65,7 +65,7 @@ class PayslipController extends PayrollController
         /** fetch data working time for employee */
         $monthlyWorkingsByCode = $this->zohoRecord->getRecords($monthlyWorkingTimeFormLinkName, 0, 200, ['code' => $code, 'salary_period' => $monthly]);
         $existMonthlyWorkingTime = !empty($monthlyWorkingsByCode) ? $monthlyWorkingsByCode[0] : [];
-        $standardWorkingDay = $existMonthlyWorkingTime['standard_working_time'] ?? 0;
+        $standardWorkingDay = $existMonthlyWorkingTime['standard_working_day'] ?? 0;
         $standardWorkingDayProbation = $existMonthlyWorkingTime['standard_working_day_probation'] ?? 0;
 
         /* assign value to key */
@@ -128,6 +128,8 @@ class PayslipController extends PayrollController
         $inputData['code']                           = $code;
         $inputData['standard_working_day']           = intval($standardWorkingDay);
         $inputData['standard_working_day_probation'] = intval($standardWorkingDayProbation);
+
+        dd($inputData);
 
         /* check if exist record */
         $payslipExists = $this->zohoRecord->getRecords($payslipFormLinkName, 0, 1, [

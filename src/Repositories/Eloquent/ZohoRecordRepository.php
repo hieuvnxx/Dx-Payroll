@@ -64,7 +64,7 @@ class ZohoRecordRepository extends BaseRepository implements ZohoRecordInterface
             foreach ($paramsById as $param) {
                 $response->whereHas('values', function ($query) use ($param) {
                         $query->where('field_id', $param->id);
-                        $query->where('value', $param->value);
+                        $query->where('value', strval($param->value));
                 });
             }
 

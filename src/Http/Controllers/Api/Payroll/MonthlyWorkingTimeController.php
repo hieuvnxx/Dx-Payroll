@@ -323,6 +323,11 @@ class MonthlyWorkingTimeController extends PayrollController
         $holidayHour = 0;
         $holidayNight = 0;
 
+        $beginningDate = $employee['Beginning_Date'] ? Carbon::createFromFormat('d-F-Y', $employee['Beginning_Date'])->format('Y-m-d') : null;
+        if ($beginningDate) {
+            $beginningDate = Carbon::createFromFormat('Y-m-d', $beginningDate);
+        }
+
         $arrayKeysDate = array_keys($dataShiftConfig);
         $dateDimension = DateDimension::whereIn('date', $arrayKeysDate)->get()->keyBy('date')->toArray();
         foreach ($dataShiftConfig as $date => $item) {
@@ -354,8 +359,10 @@ class MonthlyWorkingTimeController extends PayrollController
                             $paidLeave += $leaveDays;
                         }
                     }
+
+                    $carbonDate = Carbon::createFromFormat('Y-m-d', $date);
                     // ngày thường
-                    if (strtolower($employee['contract_type']) != 'thử việc') {
+                    if (strtolower($employee['contract_type']) != 'thử việc' && $beginningDate && $carbonDate->gte($beginningDate)) {
                         $standardWorkingDay += $workingDays;
                     } else {
                         //ngày thử việc
@@ -376,7 +383,7 @@ class MonthlyWorkingTimeController extends PayrollController
             if (!empty($overtimes)) {
                 foreach ($overtimes as $otDays => $overTime) {
                     if ($otDays == $date) {
-                        if (!isset($item['isWeekend']) || (date('w', strtotime($date)) != 6 && date('w', strtotime($date)) != 0)) {
+                        if (!isset($item['isWeekend']) && isset($dateDimension[$date]) && !$dateDimension[$date]['is_weekend']) {
                             //OT ngày thường
                             if (!$isHoliday) {
                                 if ($overTime['type'] == 'Ngày') {

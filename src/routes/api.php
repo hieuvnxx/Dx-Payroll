@@ -6,6 +6,7 @@ use Dx\Payroll\Http\Controllers\Api\ZohoRecord\UpdateController as ZohoRecordUpd
 use Dx\Payroll\Http\Controllers\Api\ZohoRecord\DeleteController as ZohoRecordDeleteController;
 use Dx\Payroll\Http\Controllers\Api\ZohoRecord\MassInsertController as ZohoRecordMassInsertController;
 use Dx\Payroll\Http\Controllers\Api\Payroll\MonthlyWorkingTimeController;
+use Dx\Payroll\Http\Controllers\Api\Payroll\OvertimeController;
 use Dx\Payroll\Http\Controllers\Api\Payroll\PayslipController;
 use Illuminate\Support\Facades\Route;
 
@@ -27,5 +28,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
         Route::post('payslip/processByCode', [PayslipController::class, 'processByCode']);
         Route::post('payslip/processAll', [PayslipController::class, 'processAll']);
+
+        Route::post('overtime/updateData', [OvertimeController::class, 'updateData']);
     });
 });

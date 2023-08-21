@@ -151,16 +151,6 @@ class PayslipController extends PayrollController
             return [ $factor['abbreviation'] => $fomulaString];
         })->values()->collapse()->all();
 
-        $standardWorkingDay = $keyWithVals['ngay_cong_chinh_thuc'] ?? 0;
-        $standardWorkingDayProbation = $keyWithVals['ngay_cong_thu_viec'] ?? 0;
-
-        $inputData = [];
-        $inputData['employee1']                      = $employeeData['Zoho_ID'];
-        $inputData['salary_period']                  = $monthly;
-        $inputData['code']                           = $code;
-        $inputData['standard_working_day']           = convert_decimal_length($standardWorkingDay, 1);
-        $inputData['standard_working_day_probation'] = convert_decimal_length($standardWorkingDayProbation, 1);
-
         /* check if exist record */
         $payslipExists = $this->zohoRecord->getRecords($payslipFormLinkName, 0, 1, [
             'code' => $code,
@@ -172,9 +162,20 @@ class PayslipController extends PayrollController
         $this->mappingContantValueToFomulaValsAndKeyVals($constantVals, $fomulaVals, $keyWithVals);
         $this->sortFomulaSource($fomulaVals, $keyWithVals);
         $this->caculateFomula($fomulaVals, $keyWithVals, $constantConfig);
-        $payslipLogDetails = [];
+        
+        $standardWorkingDay = $keyWithVals['ngay_cong_chinh_thuc'] ?? 0;
+        $standardWorkingDayProbation = $keyWithVals['ngay_cong_thu_viec'] ?? 0;
+
+        $inputData = [];
+        $inputData['employee1']                      = $employeeData['Zoho_ID'];
+        $inputData['salary_period']                  = $monthly;
+        $inputData['code']                           = $code;
+        $inputData['standard_working_day']           = convert_decimal_length($standardWorkingDay, 1);
+        $inputData['standard_working_day_probation'] = convert_decimal_length($standardWorkingDayProbation, 1);
 
         $tabularData = $this->processTabularData($formEav, $constantVals, $keyWithVals, $payslipExist);
+
+        $payslipLogDetails = [];
         if (!empty($payslipExist)) {
             $payslipZohoId = $payslipExist['Zoho_ID'];
             $responseUpdatePayslip = $this->zohoLib->updateRecord($payslipFormLinkName, $inputData, $tabularData, $payslipZohoId);

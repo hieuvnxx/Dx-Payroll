@@ -48,11 +48,11 @@ class OvertimeController extends BaseController
 
         $overTimeFromTime = "$overtimeDate $overtimeStartHour";
         $overTimeEndTime = "$overtimeDate $overtimeendHour";
-        $overTimeFromTime = Carbon::createFromFormat('d-F-Y H:i', $overTimeFromTime);
-        $overTimeEndTime = Carbon::createFromFormat('d-F-Y H:i', $overTimeEndTime);
-        
+        $overTimeFromTime = Carbon::parse($overTimeFromTime);
+        $overTimeEndTime = Carbon::parse($overTimeEndTime);
+        $diffMinutes = $overTimeFromTime->diffInMinutes($overTimeEndTime);
 
-        $diffHour = convert_decimal_length($overTimeFromTime->diff($overTimeEndTime)->format('%H.%I'), 1);
+        $diffHour = convert_decimal_length($diffMinutes/60, 1);
 
         $inputData = [
             'hour' => $diffHour

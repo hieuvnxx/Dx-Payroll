@@ -145,8 +145,8 @@ class PushPayslipPerEmployeeToZoho implements ShouldQueue
         $inputData['employee1']                      = $employeeData['Zoho_ID'];
         $inputData['salary_period']                  = $monthly;
         $inputData['code']                           = $code;
-        $inputData['standard_working_day']           = intval($standardWorkingDay);
-        $inputData['standard_working_day_probation'] = intval($standardWorkingDayProbation);
+        $inputData['standard_working_day']           = convert_decimal_length($standardWorkingDay);
+        $inputData['standard_working_day_probation'] = convert_decimal_length($standardWorkingDayProbation);
 
         /* check if exist record */
         $payslipExists = $this->zohoRecord->getRecords($payslipFormLinkName, 0, 1, [

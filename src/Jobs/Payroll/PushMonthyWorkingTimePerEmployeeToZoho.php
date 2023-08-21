@@ -124,8 +124,7 @@ class PushMonthyWorkingTimePerEmployeeToZoho implements ShouldQueue
 
         list($tabularData, $paidLeave, $holidayCount,
         $standardWorkingTime, $standardWorkingDay, $standardWorkingDayProbation,
-        $otMealAllowance, $weekdayHour, $weekNight, $weekendHour,
-        $weekendNight, $holidayHour, $holidayNight) = $monthlyWorkingTimeApiController->processUpdateData($dataShiftConfig, $constantConfig, $employee, $leaves, $overtimes, $formEav);
+        $overtimeSection) = $monthlyWorkingTimeApiController->processUpdateData($dataShiftConfig, $constantConfig, $employee, $leaves, $overtimes, $formEav);
 
         $totalWorkingDays = $standardWorkingDay + $standardWorkingDayProbation;
 
@@ -140,13 +139,15 @@ class PushMonthyWorkingTimePerEmployeeToZoho implements ShouldQueue
         $inputData['holiday_count'] = $holidayCount;
         $inputData['paid_leave'] = $paidLeave;
         $inputData['total_salary_working_day'] = $totalWorkingDays + $holidayCount + $paidLeave;
-        $inputData['ot_meal_allowance'] = $otMealAllowance;
-        $inputData['weekday1'] = $weekdayHour;
-        $inputData['week_night1'] = $weekNight;
-        $inputData['weekend1'] = $weekendHour;
-        $inputData['weekend_night1'] = $weekendNight;
-        $inputData['holiday_hour1'] = $holidayHour;
-        $inputData['holiday_night1'] = $holidayNight;
+        $inputData['ot_meal_allowance'] = $overtimeSection['meal_allowance'];
+        $inputData['weekday1'] = $overtimeSection['week_day_hour'];
+        $inputData['week_night1'] = $overtimeSection['week_night_hour'];
+        $inputData['weekend1'] = $overtimeSection['weekend_day_hour'];
+        $inputData['weekend_night1'] = $overtimeSection['weekend_night_hour'];
+        $inputData['holiday_hour1'] = $overtimeSection['holiday_day_hour'];
+        $inputData['holiday_night1'] = $overtimeSection['holiday_night_hour'];
+        $inputData['holiday_night1'] = $overtimeSection['holiday_night_hour'];
+        $inputData['holiday_night1'] = $overtimeSection['holiday_night_hour'];
 
         /* remove exist record in zoho if exist */
         if (!empty($monthlyWorkingTimeExistZoho[0])) {

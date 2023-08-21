@@ -139,8 +139,7 @@ class MonthlyWorkingTimeController extends PayrollController
 
         list($tabularData, $paidLeave, $holidayCount,
         $standardWorkingTime, $standardWorkingDay, $standardWorkingDayProbation,
-        $otMealAllowance, $weekdayHour, $weekNight, $weekendHour,
-        $weekendNight, $holidayHour, $holidayNight) = $this->processUpdateData($dataShiftConfig, $constantConfig, $employee, $leaves, $overtimes, $formEav);
+        $overtimeSection) = $this->processUpdateData($dataShiftConfig, $constantConfig, $employee, $leaves, $overtimes, $formEav);
 
         $totalWorkingDays = $standardWorkingDay + $standardWorkingDayProbation;
 
@@ -155,13 +154,15 @@ class MonthlyWorkingTimeController extends PayrollController
         $inputData['holiday_count'] = $holidayCount;
         $inputData['paid_leave'] = $paidLeave;
         $inputData['total_salary_working_day'] = $totalWorkingDays + $holidayCount + $paidLeave;
-        $inputData['ot_meal_allowance'] = $otMealAllowance;
-        $inputData['weekday1'] = $weekdayHour;
-        $inputData['week_night1'] = $weekNight;
-        $inputData['weekend1'] = $weekendHour;
-        $inputData['weekend_night1'] = $weekendNight;
-        $inputData['holiday_hour1'] = $holidayHour;
-        $inputData['holiday_night1'] = $holidayNight;
+        $inputData['ot_meal_allowance'] = $overtimeSection['meal_allowance'];
+        $inputData['weekday1'] = $overtimeSection['week_day_hour'];
+        $inputData['week_night1'] = $overtimeSection['week_night_hour'];
+        $inputData['weekend1'] = $overtimeSection['weekend_day_hour'];
+        $inputData['weekend_night1'] = $overtimeSection['weekend_night_hour'];
+        $inputData['holiday_hour1'] = $overtimeSection['holiday_day_hour'];
+        $inputData['holiday_night1'] = $overtimeSection['holiday_night_hour'];
+        $inputData['holiday_night1'] = $overtimeSection['holiday_night_hour'];
+        $inputData['holiday_night1'] = $overtimeSection['holiday_night_hour'];
 
         /* remove exist record in zoho if exist */
         if (!empty($monthlyWorkingTimeExistZoho[0])) {
@@ -315,13 +316,21 @@ class MonthlyWorkingTimeController extends PayrollController
         $standardWorkingTime = 0;
         $standardWorkingDay = 0;
         $standardWorkingDayProbation = 0;
+
+        // OT Section
         $otMealAllowance = 0;
+
         $weekdayHour = 0;
         $weekNight = 0;
+
         $weekendHour = 0;
         $weekendNight = 0;
+
         $holidayHour = 0;
         $holidayNight = 0;
+
+        $holidayWithWeekendHour = 0;
+        $holidayWithWeekendNight = 0;
 
         $beginningDate = $employee['Beginning_Date'] ? Carbon::createFromFormat('d-F-Y', $employee['Beginning_Date'])->format('Y-m-d') : null;
         if ($beginningDate) {
@@ -408,6 +417,11 @@ class MonthlyWorkingTimeController extends PayrollController
                                     $weekendNight += $overTime['hour'];
                                 }
                             } else {
+                                if ($overTime['type'] == 'Ngày') {
+                                    $holidayWithWeekendHour += $overTime['hour'];
+                                } else {
+                                    $holidayWithWeekendNight += $overTime['hour'];
+                                }
                                 //OT Ngày Lễ + Cuối Tuần
                             }
                         }
@@ -432,8 +446,20 @@ class MonthlyWorkingTimeController extends PayrollController
             }
         }
 
+        $overtimeSection = [
+            'meal_allowance' => $otMealAllowance,
+            'week_day_hour' => $weekdayHour,
+            'week_night_hour' => $weekNight,
+            'weekend_day_hour' => $weekendHour,
+            'weekend_night_hour' => $weekendNight,
+            'holiday_day_hour' => $holidayHour,
+            'holiday_night_hour' => $holidayNight,
+            'holiday_with_weekend_day_hour' => $holidayWithWeekendHour,
+            'holiday_with_weekend_night_hour' => $holidayWithWeekendNight,
+        ];
+
         return [$tabularAction, $paidLeave, $holidayCount, $standardWorkingTime, $standardWorkingDay,
-         $standardWorkingDayProbation, $otMealAllowance, $weekdayHour, $weekNight, $weekendHour, $weekendNight, $holidayHour, $holidayNight];
+         $standardWorkingDayProbation, $overtimeSection];
     }
     
     /**

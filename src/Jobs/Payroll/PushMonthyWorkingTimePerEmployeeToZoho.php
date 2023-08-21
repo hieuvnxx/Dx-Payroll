@@ -2,13 +2,11 @@
 
 namespace Dx\Payroll\Jobs\Payroll;
 
-use Carbon\Carbon;
+use Dx\Payroll\Http\Controllers\Api\Payroll\MonthlyWorkingTimeController;
 use Dx\Payroll\Integrations\ZohoPeopleIntegration;
-use Dx\Payroll\Models\DateDimension;
 use Dx\Payroll\Repositories\ZohoFormInterface;
 use Dx\Payroll\Repositories\ZohoRecordInterface;
 use Dx\Payroll\Repositories\ZohoRecordValueInterface;
-use Exception;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -56,6 +54,7 @@ class PushMonthyWorkingTimePerEmployeeToZoho implements ShouldQueue
         $this->zohoForm = $zohoForm;
         $this->zohoRecord = $zohoRecord;
         $this->zohoRecordValue = $zohoRecordValue;
+        $monthlyWorkingTimeApiController = app(MonthlyWorkingTimeController::class);
 
         $employeeIdNumberFieldLabel = Env::get('EMPLOYEE_FORM_ID_NUMBER_FIELD_LABEL');
         $constantConfigFormLinkName = Env::get('PAYROLL_CONSTANT_CONFIGURATION_FORM_LINK_NAME');
@@ -100,13 +99,13 @@ class PushMonthyWorkingTimePerEmployeeToZoho implements ShouldQueue
         /*
         * pending get data from database
         */
-        $leaves = $this->getLeaveWorking($empCode, $fromSalary, $toSalary);
+        $leaves = $monthlyWorkingTimeApiController->getLeaveWorking($empCode, $fromSalary, $toSalary);
 
         // fetch all overtime request range payslip
         /*
         * pending get data from database
         */
-        $overtimes = $this->getOverTime($empCode, $fromSalary, $toSalary);
+        $overtimes = $monthlyWorkingTimeApiController->getOverTime($empCode, $fromSalary, $toSalary);
 
         // Kiểm tra xem đã tồn tại monthly working report chưa
         $existMonthlyIds = [];
@@ -126,7 +125,7 @@ class PushMonthyWorkingTimePerEmployeeToZoho implements ShouldQueue
         list($tabularData, $paidLeave, $holidayCount,
         $standardWorkingTime, $standardWorkingDay, $standardWorkingDayProbation,
         $otMealAllowance, $weekdayHour, $weekNight, $weekendHour,
-        $weekendNight, $holidayHour, $holidayNight) = $this->processUpdateData($dataShiftConfig, $constantConfig, $employee, $leaves, $overtimes, $formEav);
+        $weekendNight, $holidayHour, $holidayNight) = $monthlyWorkingTimeApiController->processUpdateData($dataShiftConfig, $constantConfig, $employee, $leaves, $overtimes, $formEav);
 
         $totalWorkingDays = $standardWorkingDay + $standardWorkingDayProbation;
 
@@ -164,7 +163,7 @@ class PushMonthyWorkingTimePerEmployeeToZoho implements ShouldQueue
 
             foreach ($monthlyWorkingTimeExistZoho as $monthlyWorkingTime) {
                 if ($monthlyWorkingTime['Zoho_ID'] == $existToUpdateZohoId) {
-                    $this->removeExistTabularZoho($tabularData, $monthlyWorkingTime, $formEav);
+                    $monthlyWorkingTimeApiController->removeExistTabularZoho($tabularData, $monthlyWorkingTime, $formEav);
                 }
             }
 
@@ -187,8 +186,6 @@ class PushMonthyWorkingTimePerEmployeeToZoho implements ShouldQueue
             throw new \ErrorException('Something error. Can not generate attendance detail. empCode: ' . $empCode);
         }
         
-        $totalWorkingDays = $standardWorkingDay + $standardWorkingDayProbation;
-
         $rspInsert = $this->zohoLib->insertRecord($monthlyWorkingTimeFormLinkName, $inputData, 'yyyy-MM-dd');
         if (!isset($rspInsert['result']) || !isset($rspInsert['result']['pkId'])) {
             Log::channel('dx')->info('Something error. Can not insert new record monthy working time in to zoho. empCode:' . $empCode);
@@ -201,278 +198,6 @@ class PushMonthyWorkingTimePerEmployeeToZoho implements ShouldQueue
         if (!isset($rspUpdate['result']) || !isset($rspUpdate['result']['pkId'])) {
             Log::channel('dx')->info('Something error. Can not update attendance detail to record monthy working time with id :' . $zohoId);
             throw new \ErrorException('Something error. Can not update attendance detail to record monthy working time with id : '. $zohoId);
-        }
-    }
-
-    /**
-     * return all leave request approved
-     */
-    private function getLeaveWorking($empCode, $startDate, $endDate)
-    {
-        $response = [];
-
-        $leaves = $this->zohoLib->searchLeaveWorking($empCode, $startDate, $endDate);
-        if (isset($leaves['errors']) && isset($leaves['errors']['code']) && isset($leaves['status']) && $leaves['status'] != 0) return $response;
-
-        if (!empty($leaves)) {
-
-            $startDate = Carbon::createFromFormat('Y-m-d', $startDate);
-            $endDate = Carbon::createFromFormat('Y-m-d', $endDate);
-            foreach ($leaves as $leave) {
-                if (str_contains(strtolower($leave['Leavetype']), "unpaid")) continue;
-
-                /*
-                * Pending get data by database
-                */
-                $detailLeave = $this->zohoLib->getRecordByID('leave', $leave['Zoho_ID']);
-
-                if (isset($leaves['errors']) && isset($leaves['errors']['code']) && isset($leaves['status']) && $leaves['status'] != 0) continue;
-                if ($detailLeave['ApprovalStatus'] != 'Approved' || empty($detailLeave['DayDetails'])) continue;
-
-                foreach ($detailLeave['DayDetails'] as $day => $val) {
-                    if ($val['LeaveCount'] == '0.0') continue;
-
-                    $day = Carbon::createFromFormat('d-F-Y', $day)->format('Y-m-d');
-                    $day = Carbon::createFromFormat('Y-m-d', $day);
-
-                    if ($day->gte($startDate) && $day->lte($endDate)) {
-
-                        $dayString = $day->format('Y-m-d');
-                        if (isset($response[$dayString]['leave_day'])) {
-                            $response[$dayString]['leave_day'] += $val['LeaveCount'];
-                        } else {
-                            $response[$dayString]['leave_day'] = $val['LeaveCount'];
-                            $response[$dayString]['leave_type'] = $leave['Leavetype'];
-                        }
-
-                    }
-
-                }
-            }
-        }
-
-        return $response;
-    }
-
-    /**
-    * return all overtime request approved
-    */
-    private function getOverTime($empCode, $startDate, $endDate)
-    {
-        $overtimeRequestFormLinkName = Env::get('PAYROLL_OT_REQUEST_FORM_LINK_NAME', null);
-        $response = [];
-        /*
-        * Pending get data by database
-        */
-        $overtimeRequests = $this->zohoLib->getRecords($overtimeRequestFormLinkName, 0, 200, array(
-            [
-                'searchField' => 'AddedBy',
-                'searchOperator' => 'Contains',
-                'searchText' => $empCode,
-            ],
-            [
-                'searchField' => 'date',
-                'searchOperator' => 'Between',
-                'searchText' => date('Y-m-d', strtotime($startDate)) . ";" . date('Y-m-d', strtotime($endDate)),
-            ],
-        ));
-        if (isset($overtimeRequests['errors']) && isset($overtimeRequests['errors']['code']) 
-        && isset($overtimeRequests['status']) && $overtimeRequests['status'] != 0) return $response;
-
-        if (empty($overtimeRequests)) return $response;
-
-        foreach ($overtimeRequests as $overtime) {
-            if ($overtime['ApprovalStatus'] == 'Approved') {
-                $date = date('Y-m-d', strtotime($overtime['date']));
-                $response[$date]['hour'] = empty($overtime['hour']) ? 0 : $overtime['hour'];
-                $response[$date]['type'] = $overtime['type'];
-                $response[$date]['allowance'] = empty($overtime['allowance']) ? 0 : $overtime['allowance'];
-            }
-        }
-
-        return $response;
-    }
-
-    /**
-    * generate tabularData to update in to monthly working time
-    */
-    private function processUpdateData($dataShiftConfig, $constantConfig, $employee, $leaves, $overtimes, $formEav)
-    {
-        $tabularAction = [];
-
-        // All Working Time
-        $paidLeave = 0;
-        $holidayCount = 0;
-        $standardWorkingTime = 0;
-        $standardWorkingDay = 0;
-        $standardWorkingDayProbation = 0;
-        $otMealAllowance = 0;
-        $weekdayHour = 0;
-        $weekNight = 0;
-        $weekendHour = 0;
-        $weekendNight = 0;
-        $holidayHour = 0;
-        $holidayNight = 0;
-
-        $beginningDate = $employee['Beginning_Date'] ? Carbon::createFromFormat('d-F-Y', $employee['Beginning_Date'])->format('Y-m-d') : null;
-        if ($beginningDate) {
-            $beginningDate = Carbon::createFromFormat('Y-m-d', $beginningDate);
-        }
-
-        $arrayKeysDate = array_keys($dataShiftConfig);
-        $dateDimension = DateDimension::whereIn('date', $arrayKeysDate)->get()->keyBy('date')->toArray();
-        foreach ($dataShiftConfig as $date => $item) {
-            $workingHours = 0;
-            $leaveDays = 0;
-            $holidayDays = 0;
-            $isHoliday = false;
-
-            $workingHours = date('H', strtotime($item['TotalHours'])) + date('i', strtotime($item['TotalHours'])) / 60;
-            $workingDays = total_standard_working_day_by_working_hour($workingHours, $constantConfig);
-            if (!isset($item['isWeekend']) && isset($dateDimension[$date]) && !$dateDimension[$date]['is_weekend']) {
-                // ngày công tiêu chuẩn
-                $standardWorkingTime++;
-                if (str_contains(strtolower($item['Status']), "holiday") || str_contains(strtolower($item['Status']), "ngày lễ")) {
-                    // ngày lễ
-                    $holidayCount++;
-                    $workingDays = 0;
-                    $holidayDays = 1;
-                    $isHoliday = true;
-                } else {
-                    if (!str_contains(strtolower($item['Status']), "maternity") && !str_contains(strtolower($item['Status']), "thai sản")) {
-                        if (!empty($leaves) && array_key_exists($date, $leaves)) {
-                            // ngày nghỉ phép
-                            $leaveDays = (float)$leaves[$date]['leave_day'];
-                            $totalDays = $leaveDays + $workingDays;
-                            if ($totalDays > 1) {
-                                $workingDays = 1 - $leaveDays;
-                            }
-                            $paidLeave += $leaveDays;
-                        }
-                    }
-
-                    $carbonDate = Carbon::createFromFormat('Y-m-d', $date);
-                    // ngày thường
-                    if (strtolower($employee['contract_type']) != 'thử việc' && $beginningDate && $carbonDate->gte($beginningDate)) {
-                        $standardWorkingDay += $workingDays;
-                    } else {
-                        //ngày thử việc
-                        $standardWorkingDayProbation += $workingDays;
-                    }
-                }
-            } else {
-                // Cuối tuần
-                $workingDays = 0;
-                $item['FirstIn'] = '-';
-                $item['LastOut'] = '-';
-                //Ngày lễ chủ nhật
-                if (str_contains(strtolower($item['Status']), "holiday") || str_contains(strtolower($item['Status']), "ngày lễ")) {
-                    $isHoliday = true;
-                }
-            }
-
-            if (!empty($overtimes)) {
-                foreach ($overtimes as $otDays => $overTime) {
-                    if ($otDays == $date) {
-                        if (!isset($item['isWeekend']) && isset($dateDimension[$date]) && !$dateDimension[$date]['is_weekend']) {
-                            //OT ngày thường
-                            if (!$isHoliday) {
-                                if ($overTime['type'] == 'Ngày') {
-                                    $weekdayHour += $overTime['hour'];
-                                } else {
-                                    $weekNight += $overTime['hour'];
-                                }
-                            } else {
-                                //OT Ngày Lễ
-                                if ($overTime['type'] == 'Ngày') {
-                                    $holidayHour += $overTime['hour'];
-                                } else {
-                                    $holidayNight += $overTime['hour'];
-                                }
-                            }
-                        } else {
-                            //OT cuối tuần
-                            if (!$isHoliday) {
-                                if ($overTime['type'] == 'Ngày') {
-                                    $weekendHour += $overTime['hour'];
-                                } else {
-                                    $weekendNight += $overTime['hour'];
-                                }
-                            } else {
-                                //OT Ngày Lễ + Cuối Tuần
-                            }
-                        }
-                        $otMealAllowance += $overTime['allowance'];
-                    }
-                }
-            }
-
-            $sections = $formEav->sections;
-            if (!$sections->isEmpty()) {
-                foreach ($sections as $section) {
-                    $item['append_by_logic_code_actual_Date'] = $date;
-                    $item['append_by_logic_code_actual_working_day'] = $workingDays;
-                    $item['append_by_logic_code_paid_leave1'] = $leaveDays;
-                    $item['append_by_logic_code_holiday'] = $holidayDays;
-                    $tabularRowAdd = [];
-                    foreach ($section->attributes as $attribute) {
-                        $tabularRowAdd[$attribute->field_label] = $this->formatFieldValueTabularByDefault($attribute->field_label, $item);
-                    }
-                    $tabularAction[$section->section_id]['add'][] = $tabularRowAdd;
-                }
-            }
-        }
-
-        return [$tabularAction, $paidLeave, $holidayCount, $standardWorkingTime, $standardWorkingDay,
-         $standardWorkingDayProbation, $otMealAllowance, $weekdayHour, $weekNight, $weekendHour, $weekendNight, $holidayHour, $holidayNight];
-    }
-
-    /**
-    * return all overtime request approved
-    */
-    private function formatFieldValueTabularByDefault($fieldLabel, $vars)
-    {
-        $value = '';
-        switch ($fieldLabel) {
-            case 'Date':
-                $value = $vars['append_by_logic_code_actual_Date'];
-                break;
-            case 'Punch_in':
-                $value = $vars['FirstIn'] != '-' ? date('Y-m-d H:i:s', strtotime($vars['FirstIn'])) : '';
-                break;
-            case 'punch_out':
-                $value = $vars['LastOut'] != '-' ? date('Y-m-d H:i:s', strtotime($vars['LastOut'])) : '';
-                break;
-            case 'actual_working_day':
-                $value = $vars['append_by_logic_code_actual_working_day'];
-                break;
-            case 'paid_leave1':
-                $value = $vars['append_by_logic_code_paid_leave1'];
-                break;
-            case 'holiday':
-                $value = $vars['append_by_logic_code_holiday'];
-                break;
-            default:
-                $value = $vars[$fieldLabel] ?? '';
-        }
-        return $value;
-    }
-
-    /**
-    * removeExistTabularZoho
-    */
-    private function removeExistTabularZoho(&$tabularData, $existMonthlyData, $formEav)
-    {
-        $sections = $formEav->sections;
-        if (!$sections->isEmpty()) {
-            foreach ($sections as $section) {
-                $tabularExistInZoho = $existMonthlyData['tabularSections'][$section->section_name] ?? [];
-                if (!empty($tabularExistInZoho[0])) {
-                    foreach ($tabularExistInZoho as $value) {
-                        $tabularData[$section->section_id]['delete'][] = strval($value['tabular.ROWID']);
-                    }
-                }
-            }
         }
     }
 }

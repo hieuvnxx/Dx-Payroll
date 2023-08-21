@@ -216,7 +216,7 @@ class MonthlyWorkingTimeController extends PayrollController
     /**
      * return all leave request approved
      */
-    private function getLeaveWorking($empCode, $startDate, $endDate)
+    public function getLeaveWorking($empCode, $startDate, $endDate)
     {
         $response = [];
 
@@ -266,7 +266,7 @@ class MonthlyWorkingTimeController extends PayrollController
     /**
     * return all overtime request approved
     */
-    private function getOverTime($empCode, $startDate, $endDate)
+    public function getOverTime($empCode, $startDate, $endDate)
     {
         $overtimeRequestFormLinkName = Env::get('PAYROLL_OT_REQUEST_FORM_LINK_NAME', null);
         $response = [];
@@ -305,7 +305,7 @@ class MonthlyWorkingTimeController extends PayrollController
     /**
     * generate tabularData to update in to monthly working time
     */
-    private function processUpdateData($dataShiftConfig, $constantConfig, $employee, $leaves, $overtimes, $formEav)
+    public function processUpdateData($dataShiftConfig, $constantConfig, $employee, $leaves, $overtimes, $formEav)
     {
         $tabularAction = [];
 
@@ -439,7 +439,7 @@ class MonthlyWorkingTimeController extends PayrollController
     /**
     * return all overtime request approved
     */
-    private function formatFieldValueTabularByDefault($fieldLabel, $vars)
+    public function formatFieldValueTabularByDefault($fieldLabel, $vars)
     {
         $value = '';
         switch ($fieldLabel) {
@@ -470,7 +470,7 @@ class MonthlyWorkingTimeController extends PayrollController
     /**
     * removeExistTabularZoho
     */
-    private function removeExistTabularZoho(&$tabularData, $existMonthlyData, $formEav)
+    public function removeExistTabularZoho(&$tabularData, $existMonthlyData, $formEav)
     {
         $sections = $formEav->sections;
         if (!$sections->isEmpty()) {

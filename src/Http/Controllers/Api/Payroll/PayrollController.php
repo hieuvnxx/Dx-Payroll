@@ -16,7 +16,7 @@ use Illuminate\Support\Env;
  */
 class PayrollController extends BaseController
 {
-    protected function getAllDataFormLinkName($formLinkName, ZohoRecordInterface $zohoRecord)
+    public function getAllDataFormLinkName($formLinkName, ZohoRecordInterface $zohoRecord)
     {
         $response = new Collection();
 
@@ -36,7 +36,7 @@ class PayrollController extends BaseController
         return $response;
     }
 
-    protected function getPersonalIncomeTax(&$keyWithVals, $constantConfig)
+    public function getPersonalIncomeTax(&$keyWithVals, $constantConfig)
     {
         $keyWithVals['thue_tncn'] = 0;
         if (empty($keyWithVals['thu_nhap_tinh_thue']) || empty($constantConfig['TabularSections']['Quy định tính thuế TNCN'])) return;
@@ -60,7 +60,7 @@ class PayrollController extends BaseController
         }
     }
 
-    protected function calculateIncomeTax($salaryWithIncomeTax, $level, $percent)
+    public function calculateIncomeTax($salaryWithIncomeTax, $level, $percent)
     {
         $levels = [
             7 => 9850000,

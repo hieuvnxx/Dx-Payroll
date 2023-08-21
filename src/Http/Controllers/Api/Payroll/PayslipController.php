@@ -6,13 +6,14 @@ namespace Dx\Payroll\Http\Controllers\Api\Payroll;
 use Carbon\Carbon;
 use DivisionByZeroError;
 use Dx\Payroll\Http\Controllers\Api\Payroll\PayrollController;
+use Dx\Payroll\Http\Requests\ApiPayslipAll;
 use Dx\Payroll\Http\Requests\ApiPayslipByCode;
 use Dx\Payroll\Integrations\ZohoPeopleIntegration;
+use Dx\Payroll\Jobs\Payroll\PushPayslipPerEmployeeToZoho;
 use Dx\Payroll\Repositories\ZohoFormInterface;
 use Dx\Payroll\Repositories\ZohoRecordInterface;
 use Dx\Payroll\Repositories\ZohoRecordValueInterface;
 use Illuminate\Support\Env;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -37,9 +38,36 @@ class PayslipController extends PayrollController
     /**
     * 
     */
-    public function processAll(ApiPayslipByCode $request)
+    public function processAll(ApiPayslipAll $request)
     {
+        $month   = $request->month;
+        $employeeFormLinkName       = Env::get('EMPLOYEE_FORM_LINK_NAME');
+        $employeeIdNumberFieldLabel = Env::get('EMPLOYEE_FORM_ID_NUMBER_FIELD_LABEL');
+
+        $offset = 0;
+        $limit  = 100;
         
+        $arrEmpCode = [];
+        while (true) {
+            $employees = $this->zohoRecord->getRecords($employeeFormLinkName, $offset, $limit, ['Employeestatus' => "Active"]);
+            if (empty($employees)) {
+                break;
+            }
+
+            foreach($employees as $employee) {
+                $arrEmpCode[] = $employee[$employeeIdNumberFieldLabel];
+                
+                $data = [
+                    'employee' => $employee,
+                    'month' => $month
+                ];
+                PushPayslipPerEmployeeToZoho::dispatch($data);
+            }
+
+            $offset += $limit;
+        }
+
+        return $this->sendResponse($request, 'Successfully.', [ 'empCodes' => $arrEmpCode, 'total' => count($arrEmpCode)]);
     }
 
     /**
@@ -49,7 +77,6 @@ class PayslipController extends PayrollController
     {
         $employeeFormLinkName       = Env::get('EMPLOYEE_FORM_LINK_NAME');
         $employeeIdNumberFieldLabel = Env::get('EMPLOYEE_FORM_ID_NUMBER_FIELD_LABEL');
-        $monthlyWorkingTimeFormLinkName = Env::get('PAYROLL_MONTHY_WORKING_TIME_FORM_LINK_NAME');
         $formMasterDataFormLinkName = Env::get('PAYROLL_FORM_MASTER_DATA_FORM_LINK_NAME');
         $salaryFactorFormLinkName = Env::get('PAYROLL_SALARY_FACTOR_FORM_LINK_NAME');
         $formulaSourceFormLinkName = Env::get('PAYROLL_FORMULA_SOURCE_FORM_LINK_NAME');
@@ -177,7 +204,7 @@ class PayslipController extends PayrollController
         return $this->sendResponse($request, 'Successfully.', $payslipLogDetails);
     }
 
-    private function caculateFomula(&$fomulaVals, &$keyWithVals, $constantConfig)
+    public function caculateFomula(&$fomulaVals, &$keyWithVals, $constantConfig)
     {
         $this->getPersonalIncomeTax($keyWithVals, $constantConfig);
 
@@ -199,7 +226,7 @@ class PayslipController extends PayrollController
         $this->sortFomulaSource($fomulaVals, $keyWithVals);
     }
 
-    private function replaceSystemDataToFactor(&$cacheDataForm, $formLinkName, $fieldLabel, $searchParams = [], $zohoId = null)
+    public function replaceSystemDataToFactor(&$cacheDataForm, $formLinkName, $fieldLabel, $searchParams = [], $zohoId = null)
     {
         if (!empty($searchParams) && !empty($cacheDataForm[$formLinkName.$fieldLabel])) {
             return $cacheDataForm[$formLinkName.$fieldLabel][$fieldLabel] ?? '';
@@ -239,7 +266,7 @@ class PayslipController extends PayrollController
     /**
     * mappingConstantVals
     */
-    private function mappingConstantVals($month, $employeeData, $payslipExist)
+    public function mappingConstantVals($month, $employeeData, $payslipExist)
     {
         $constantVals = [];
 
@@ -368,7 +395,7 @@ class PayslipController extends PayrollController
     /**
     * mappingContantValueToFomulaValsAndKeyVals
     */
-    private function mappingContantValueToFomulaValsAndKeyVals($constantVals, &$fomulaVals, &$keyWithVals)
+    public function mappingContantValueToFomulaValsAndKeyVals($constantVals, &$fomulaVals, &$keyWithVals)
     {
         foreach($constantVals as $key => $val) {
             foreach ($fomulaVals as &$fomula) {
@@ -382,7 +409,7 @@ class PayslipController extends PayrollController
     /**
     * sortFomulaSource
     */
-    private function sortFomulaSource(&$fomulaSources, &$keyWithVals, $loop = false)
+    public function sortFomulaSource(&$fomulaSources, &$keyWithVals, $loop = false)
     {
         $loop = false;
         $notHaveMoreEval = true;
@@ -416,7 +443,7 @@ class PayslipController extends PayrollController
     /**
     * generate tabularData to update in to monthly working time
     */
-    private function processTabularData($formEav, $constantVals, $keyWithVals, $payslipExist)
+    public function processTabularData($formEav, $constantVals, $keyWithVals, $payslipExist)
     {
         $tabularAction = [];
 
@@ -467,7 +494,7 @@ class PayslipController extends PayrollController
      * 'bonus_type' Các loại thưởng tương tự trường Loại thưởng trên form Cấu hình hằng số. Thưởng cá nhân: nhập trên Hồ sơ nhân viên tại bảng Bonus & Others với Danh mục = Income/Thu nhập
      * 'bonus_amount'  Hệ thống tự động cập nhật số tiền thưởng tương ứng với loại thưởng. 
      */
-    private function bonusTabular(&$tabularAction, $payslipExist, $section, $constantVals, $keyWithVals)
+    public function bonusTabular(&$tabularAction, $payslipExist, $section, $constantVals, $keyWithVals)
     {
         if (!empty($constantVals['thuong_le']['detai'])) {
             foreach ($constantVals['thuong_le']['detai'] as $bonusDetail) {
@@ -499,7 +526,7 @@ class PayslipController extends PayrollController
      * 
      * 'deduction_amount' Hệ thống tự động cập nhật số tiền giảm trừ tương ứng với loại giảm trừ. 
      */
-    private function totalDeductionTabular(&$tabularAction, $payslipExist, $section, $constantVals, $keyWithVals)
+    public function totalDeductionTabular(&$tabularAction, $payslipExist, $section, $constantVals, $keyWithVals)
     {
         $deductionType = [
             'Bảo hiểm (BHXH, BHYT, BHTN)' => sum_number($keyWithVals['bhxh_nv'], $keyWithVals['bhyt_nv'], $keyWithVals['bhtn_nv'],
@@ -530,7 +557,7 @@ class PayslipController extends PayrollController
      * 
      * 
      */
-    private function basicSalaryTabular(&$tabularAction, $sectionId,  $keyAction, $keyWithVals , $rowId = null)
+    public function basicSalaryTabular(&$tabularAction, $sectionId,  $keyAction, $keyWithVals , $rowId = null)
     {
         $tabularRow = [
             'basic_salary' => convert_decimal_length($keyWithVals['muc_luong_co_ban'], 0),
@@ -566,7 +593,7 @@ class PayslipController extends PayrollController
      * 'deduction' Hệ thống tự động cập nhật bằng tổng giá trị trường Số tiền của các hàng trong bảng Khoản trừ
      * 'actual_salary' Bằng Tổng lương + Tổng trợ cấp + Tổng thưởng - Tổng giảm trừ
      */
-    private function totalSalaryTabular(&$tabularAction, $sectionId, $keyAction, $keyWithVals , $rowId = null)
+    public function totalSalaryTabular(&$tabularAction, $sectionId, $keyAction, $keyWithVals , $rowId = null)
     {
         $deductionType = [
             'Bảo hiểm (BHXH, BHYT, BHTN)' => sum_number($keyWithVals['bhxh_nv'], $keyWithVals['bhyt_nv'], $keyWithVals['bhtn_nv'],
@@ -631,7 +658,7 @@ class PayslipController extends PayrollController
      * 'tax_arrears' Cho phép người dùng nhập trên bảng lương.
      * 'total_deduction' Hệ thống tự động cập nhật theo form Công thức.
      */
-    private function kpiSalaryTabular(&$tabularAction, $sectionId,  $keyAction, $keyWithVals , $rowId = null)
+    public function kpiSalaryTabular(&$tabularAction, $sectionId,  $keyAction, $keyWithVals , $rowId = null)
     {
         $tabularRow = [
             'kpi_salary' => convert_decimal_length($keyWithVals['thu_nhap_theo_kpi'], 0),
@@ -661,5 +688,4 @@ class PayslipController extends PayrollController
             $tabularAction[$sectionId][$keyAction][] = $tabularRow;
         }
     }
-
 }

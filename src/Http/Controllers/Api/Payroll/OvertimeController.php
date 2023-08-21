@@ -52,7 +52,7 @@ class OvertimeController extends BaseController
         $overTimeEndTime = Carbon::createFromFormat('d-F-Y H:i', $overTimeEndTime);
         
 
-        $diffHour = convert_decimal_length($overTimeFromTime->diff($overTimeEndTime)->format('%H.%I'));
+        $diffHour = convert_decimal_length($overTimeFromTime->diff($overTimeEndTime)->format('%H.%I'), 1);
 
         $inputData = [
             'hour' => $diffHour

@@ -17,7 +17,6 @@ class ZohoRecordValue extends Model
     protected $fillable = [
         'record_id',
         'field_id',
-        'section_id',
         'row_id',
         'value',
     ];
@@ -30,11 +29,6 @@ class ZohoRecordValue extends Model
     public function fields()
     {
         return $this->belongsTo(ZohoRecordField::class, 'id', 'field_id');
-    }
-
-    public function sections()
-    {
-        return $this->belongsTo(ZohoSection::class, 'id', 'section_id');
     }
 
     protected $casts = [

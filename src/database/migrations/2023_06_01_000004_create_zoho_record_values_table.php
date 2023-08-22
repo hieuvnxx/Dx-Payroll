@@ -16,11 +16,14 @@ return new class extends Migration
     {
         Schema::create(DxServiceProvider::DX_PREFIX_TABLE.'zoho_record_values', function (Blueprint $table) {
             $table->id();
-            $table->unsignedBigInteger('record_id'); //$table->foreignId('form_id')->constrained(DxServiceProvider::DX_PREFIX_TABLE.'zoho_forms');
-            $table->unsignedBigInteger('field_id'); //$table->foreignId('field_id')->constrained(DxServiceProvider::DX_PREFIX_TABLE.'zoho_record_fields');
-            $table->unsignedBigInteger('section_id')->nullable()->default(0); //$table->foreignId('field_id')->constrained(DxServiceProvider::DX_PREFIX_TABLE.'zoho_record_fields');
+            // $table->unsignedBigInteger('record_id');
+            // $table->unsignedBigInteger('field_id');
+            $table->foreignId('record_id')->constrained(DxServiceProvider::DX_PREFIX_TABLE.'zoho_records');
+            $table->foreignId('field_id')->constrained(DxServiceProvider::DX_PREFIX_TABLE.'zoho_record_fields');
             $table->unsignedBigInteger('row_id')->nullable()->default(0);
             $table->text('value')->nullable();
+
+           
         });
     }
 

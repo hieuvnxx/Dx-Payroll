@@ -21,5 +21,14 @@ class ZohoRecordField extends Model
         'field_name',
         'field_label',
         'type',
+        'autofillvalue',
+        'ismandatory',
+        'options',
+        'decimal_length',
+        'max_length',
+    ];
+
+    protected $casts = [
+        'ismandatory' => 'boolean',
     ];
 }

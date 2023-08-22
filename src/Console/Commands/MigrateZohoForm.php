@@ -59,6 +59,8 @@ class MigrateZohoForm extends Command
                     'form_link_name' => $form['formLinkName'],
                     'status' => $form["isVisible"] ? 1 : 0
                 ]);
+                
+                $this->info(now()->toDateTimeString() . " Process Form Name: " . $form['formLinkName']);
 
                 $arrComp = $this->zohoLib->getSectionForm($form['formLinkName'], 2, false);
                 if (!isset($arrComp['response']['result']) || empty($arrComp['response']['result'])) {
@@ -84,6 +86,11 @@ class MigrateZohoForm extends Command
                                             'field_name' => $sectionField['displayname'],
                                             'field_label' => $sectionField['labelname'],
                                             'type' => $sectionField['comptype'],
+                                            'autofillvalue' => $sectionField['autofillvalue'],
+                                            'ismandatory' => $sectionField['ismandatory'],
+                                            'options' => isset($data['Options']) && $data['comptype'] == "Picklist" ? json_encode($data['Options'], JSON_UNESCAPED_SLASHES) : null,
+                                            'decimal_length' => $sectionField['decimalLength'] ?? null,
+                                            'max_length' => $sectionField['maxLength'] ?? null,
                                         ];
                                     }
                                 }
@@ -98,12 +105,17 @@ class MigrateZohoForm extends Command
                         'field_name' => $data['displayname'],
                         'field_label' => $data['labelname'],
                         'type' => $data['comptype'],
+                        'autofillvalue' => $data['autofillvalue'],
+                        'ismandatory' => $data['ismandatory'],
+                        'options' => isset($data['Options']) && $data['comptype'] == "Picklist" ? json_encode($data['Options'], JSON_UNESCAPED_SLASHES) : null,
+                        'decimal_length' => $data['decimalLength'] ?? null,
+                        'max_length' => $data['maxLength'] ?? null,
                     ];
                 }
             }
 
             //chunk to insert database
-            $insertZohoRecordFieldsChunk = array_chunk($insertZohoRecordFields, 500);
+            $insertZohoRecordFieldsChunk = array_chunk($insertZohoRecordFields, 1000);
             foreach ($insertZohoRecordFieldsChunk as $dataChunk) {
                 ZohoRecordField::insert($dataChunk);
             }
@@ -112,7 +124,7 @@ class MigrateZohoForm extends Command
             return $this->info(now()->toDateTimeString() . " Successfully: dxpayroll:migrateZohoForm");
         } catch (\Exception $e) {
             DB::rollback();
-            return $this->info(now()->toDateTimeString() . " Error: dxpayroll:migrateZohoForm ::: Message : " . $e->getMessage());
+            return $this->error(now()->toDateTimeString() . " Error: dxpayroll:migrateZohoForm ::: Message : " . $e->getMessage(). " ::: Line : " . $e->getLine());
         }
     }
 }

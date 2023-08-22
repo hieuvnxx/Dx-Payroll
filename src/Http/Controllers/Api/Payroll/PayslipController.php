@@ -157,6 +157,7 @@ class PayslipController extends PayrollController
             'salary_period'=> $monthly
         ]);
         $payslipExist = isset($payslipExists[0]) ? $payslipExists[0] : [];
+        dump($fomulaVals);
 
         list($constantConfig, $constantVals) = $this->mappingConstantVals($month, $employeeData, $payslipExist);
         $this->mappingContantValueToFomulaValsAndKeyVals($constantVals, $fomulaVals, $keyWithVals);
@@ -165,6 +166,7 @@ class PayslipController extends PayrollController
         
         $standardWorkingDay = $keyWithVals['ngay_cong_chinh_thuc'] ?? 0;
         $standardWorkingDayProbation = $keyWithVals['ngay_cong_thu_viec'] ?? 0;
+        dump($keyWithVals);
 
         $inputData = [];
         $inputData['employee1']                      = $employeeData['Zoho_ID'];
@@ -174,6 +176,8 @@ class PayslipController extends PayrollController
         $inputData['standard_working_day_probation'] = convert_decimal_length($standardWorkingDayProbation, 1);
 
         $tabularData = $this->processTabularData($formEav, $constantVals, $keyWithVals, $payslipExist);
+
+        dd($inputData, $tabularData);
 
         $payslipLogDetails = [];
         if (!empty($payslipExist)) {
@@ -668,7 +672,7 @@ class PayslipController extends PayrollController
             'meal_subsidy' => convert_decimal_length($keyWithVals['phu_cap_an_trua'], 0),
             'fuel_subsidy' => convert_decimal_length($keyWithVals['phu_cap_xang_xe'], 0),
             'mobile_subsidy' => convert_decimal_length($keyWithVals['phu_cap_dien_thoai'], 0),
-            'overtime_allowance' => convert_decimal_length($keyWithVals['so_tien_lam_ngoai_gio']),
+            'overtime_allowance' => convert_decimal_length($keyWithVals['tong_phu_cap_tang_ca']),
             'other_allowance' => convert_decimal_length($keyWithVals['phu_cap_khac']),
             'standard_salary_per_hour1' => convert_decimal_length($keyWithVals['tien_luong_tieu_chuan_gio'], 0),
             'ot_salary' => convert_decimal_length($keyWithVals['so_tien_lam_ngoai_gio'], 0),

@@ -17,8 +17,8 @@ return new class extends Migration
         Schema::create(DxServiceProvider::DX_PREFIX_TABLE.'zoho_records', function (Blueprint $table) {
             $table->id();
             $table->unsignedBigInteger('zoho_id');
-            // $table->unsignedBigInteger('form_id');
-            $table->foreignId('form_id')->constrained(DxServiceProvider::DX_PREFIX_TABLE.'zoho_forms');
+            $table->unsignedBigInteger('form_id');
+            // $table->foreignId('form_id')->constrained(DxServiceProvider::DX_PREFIX_TABLE.'zoho_forms');
         });
     }
 

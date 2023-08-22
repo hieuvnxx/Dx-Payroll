@@ -157,7 +157,6 @@ class PayslipController extends PayrollController
             'salary_period'=> $monthly
         ]);
         $payslipExist = isset($payslipExists[0]) ? $payslipExists[0] : [];
-        dump($fomulaVals);
 
         list($constantConfig, $constantVals) = $this->mappingConstantVals($month, $employeeData, $payslipExist);
         $this->mappingContantValueToFomulaValsAndKeyVals($constantVals, $fomulaVals, $keyWithVals);
@@ -166,7 +165,6 @@ class PayslipController extends PayrollController
         
         $standardWorkingDay = $keyWithVals['ngay_cong_chinh_thuc'] ?? 0;
         $standardWorkingDayProbation = $keyWithVals['ngay_cong_thu_viec'] ?? 0;
-        dump($keyWithVals);
 
         $inputData = [];
         $inputData['employee1']                      = $employeeData['Zoho_ID'];
@@ -176,8 +174,6 @@ class PayslipController extends PayrollController
         $inputData['standard_working_day_probation'] = convert_decimal_length($standardWorkingDayProbation, 1);
 
         $tabularData = $this->processTabularData($formEav, $constantVals, $keyWithVals, $payslipExist);
-
-        dd($inputData, $tabularData);
 
         $payslipLogDetails = [];
         if (!empty($payslipExist)) {

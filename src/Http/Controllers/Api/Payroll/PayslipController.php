@@ -120,7 +120,7 @@ class PayslipController extends PayrollController
                     $searchParams = array_merge($searchParams, ['employee' => $employeeData['Zoho_ID']]);
                 }
                 return [ $factor['abbreviation'] => $this->replaceSystemDataToFactor($cacheDataForm, $masterDataByFactor['form_label'],
-                                                                                    $masterDataByFactor['field_label'], $searchParams)];
+                                                                                    $masterDataByFactor['label_name'], $searchParams)];
             }
         })->values()->collapse()->all();
 

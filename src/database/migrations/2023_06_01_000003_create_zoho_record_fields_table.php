@@ -20,11 +20,11 @@ return new class extends Migration
             $table->unsignedBigInteger('section_id')->nullable()->default(0); 
             $table->unsignedBigInteger('form_id'); 
             // $table->foreignId('section_id')->constrained(DxServiceProvider::DX_PREFIX_TABLE.'zoho_sections');
-            $table->string('field_name', 255)->nullable();
-            $table->string('field_label', 255)->nullable();
-            $table->char('type', 75)->nullable();
+            $table->string('display_name', 255)->nullable();
+            $table->string('label_name', 255)->nullable();
+            $table->char('comp_type', 75)->nullable();
             $table->text('autofillvalue')->comment('require input');
-            $table->boolean('ismandatory')->comment('require input');
+            $table->boolean('is_mandatory')->comment('require input');
             $table->longText('options')->nullable()->comment('additional for field type picklist, lookup');
             $table->tinyInteger('decimal_length')->nullable()->comment('additional for field type decimal');
             $table->integer('max_length')->nullable()->comment('additional for field type picklist, lookup');

@@ -17,10 +17,18 @@ class ZohoForm extends Model
     protected $table = DxServiceProvider::DX_PREFIX_TABLE.'zoho_forms';
 
     protected $fillable = [
-        'zoho_id',
-        'form_name',
+        'component_id',
+        'display_name',
         'form_link_name',
-        'status',
+        'is_custom',
+        'is_visible',
+        'view_id',
+        'view_name',
+    ];
+
+    protected $casts = [
+        'is_custom' => 'boolean',
+        'is_visible' => 'boolean',
     ];
 
     public function sections()

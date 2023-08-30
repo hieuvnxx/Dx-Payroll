@@ -51,10 +51,10 @@ class ZohoRecordRepository extends BaseRepository implements ZohoRecordInterface
             $attributes = $zohoForm->attributes;
 
             $paramsById = $attributes->reject( function($item) use ($params) {
-                    return !isset($params[$item->field_label]);
+                    return !isset($params[$item->label_name]);
             })->map( function ($item) use ($params) {
-                if (isset($params[$item->field_label])) {
-                    $item->value = $params[$item->field_label];
+                if (isset($params[$item->label_name])) {
+                    $item->value = $params[$item->label_name];
                     return $item;
                 }
             });
@@ -124,9 +124,9 @@ class ZohoRecordRepository extends BaseRepository implements ZohoRecordInterface
 
         foreach ($origin->values as $val){
             $response['Zoho_ID'] = $origin->zoho_id;
-            $response[$val->field_label] = $this->castValue($val->type, $val->value);
+            $response[$val->label_name] = $this->castValue($val->type, $val->value);
             if (!empty($val->section_name)) {
-                $response['TabularSections'][$val->section_name][$val->row_id][$val->field_label] = $this->castValue($val->type, $val->value);
+                $response['TabularSections'][$val->section_name][$val->row_id][$val->label_name] = $this->castValue($val->type, $val->value);
             }
         }
 
@@ -147,9 +147,9 @@ class ZohoRecordRepository extends BaseRepository implements ZohoRecordInterface
         foreach ($origin as $data){
             foreach ($data->values as $val){
                 $response[$index]['Zoho_ID'] = $data->zoho_id;
-                $response[$index][$val->field_label] = $this->castValue($val->type, $val->value);
+                $response[$index][$val->label_name] = $this->castValue($val->type, $val->value);
                 if (!empty($val->section_name)) {
-                    $response[$index]['TabularSections'][$val->section_name][$val->row_id][$val->field_label] = $this->castValue($val->type, $val->value);
+                    $response[$index]['TabularSections'][$val->section_name][$val->row_id][$val->label_name] = $this->castValue($val->type, $val->value);
                 }
             }
             $index++;

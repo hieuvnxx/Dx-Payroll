@@ -51,6 +51,7 @@ class MigrateDataPayrollModuleFromZoho extends Command
             'PAYROLL_FORM_MASTER_DATA_FORM_LINK_NAME' => Env::get('PAYROLL_FORM_MASTER_DATA_FORM_LINK_NAME', null),
             'PAYROLL_SALARY_FACTOR_FORM_LINK_NAME' => Env::get('PAYROLL_SALARY_FACTOR_FORM_LINK_NAME', null),
             'PAYROLL_FORMULA_SOURCE_FORM_LINK_NAME' => Env::get('PAYROLL_FORMULA_SOURCE_FORM_LINK_NAME', null),
+            'MASTER_DATA_SHIFT_FORM_LINK_NAME' => Env::get('MASTER_DATA_SHIFT_FORM_LINK_NAME', null),
         ];
 
         foreach ($modulePayrollFormLinkNames as $envKey => $formLinkName) {

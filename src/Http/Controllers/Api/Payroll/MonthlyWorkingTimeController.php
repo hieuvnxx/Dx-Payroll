@@ -439,7 +439,7 @@ class MonthlyWorkingTimeController extends PayrollController
                     $item['append_by_logic_code_holiday'] = $holidayDays;
                     $tabularRowAdd = [];
                     foreach ($section->attributes as $attribute) {
-                        $tabularRowAdd[$attribute->field_label] = $this->formatFieldValueTabularByDefault($attribute->field_label, $item);
+                        $tabularRowAdd[$attribute->label_name] = $this->formatFieldValueTabularByDefault($attribute->label_name, $item);
                     }
                     $tabularAction[$section->section_id]['add'][] = $tabularRowAdd;
                 }

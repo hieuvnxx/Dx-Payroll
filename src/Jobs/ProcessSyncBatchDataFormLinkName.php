@@ -42,31 +42,31 @@ class ProcessSyncBatchDataFormLinkName implements ShouldQueue
     {
         $responseZohoRecords  =  $this->responseZohoRecords;
 
+        DB::beginTransaction();
         try {
-            DB::beginTransaction();
-
             foreach ($responseZohoRecords as $responseRecordData) {
                 Log::channel('dx')->info('ProcessSyncBatchDataFormLinkName ::: formLinkName ::: [' . $this->zohoForm->form_link_name .'] recordId ::: [' . $responseRecordData['Zoho_ID'] .']');
 
                 $zohoRecord = ZohoRecord::updateOrCreate(['form_id' => $this->zohoForm->id, 'zoho_id' => (string)$responseRecordData['Zoho_ID']]);
-
+                
                 $zohoFormSections = $this->zohoForm->sections->keyBy('section_name');
                 if (!empty($responseRecordData['tabularSections'])) {
                     foreach ($responseRecordData['tabularSections'] as $tabularName => $values) {
                         if (!isset($zohoFormSections[$tabularName]) || empty($values[0])) continue;
 
                         foreach ($values as $value) {
-                            ZohoRecordValue::createOrUpdateZohoRecordValue($zohoFormSections[$tabularName]->attributes->keyBy('field_label'), $zohoRecord, $value, $value['tabular.ROWID']);
+                            ZohoRecordValue::createOrUpdateZohoRecordValue($zohoFormSections[$tabularName]->attributes->keyBy('label_name'), $zohoRecord, $value, $value['tabular.ROWID']);
                         }
                     }
                     unset($responseRecordData['tabularSections']);
                 }
-
-                ZohoRecordValue::createOrUpdateZohoRecordValue($this->zohoForm->attributes->keyBy('field_label'), $zohoRecord, $responseRecordData);
+                
+                ZohoRecordValue::createOrUpdateZohoRecordValue($this->zohoForm->attributes->keyBy('label_name'), $zohoRecord, $responseRecordData);
             }
 
             DB::commit();
         } catch (Exception $e) {
+            throw new \ErrorException('Something error. Can not sync batch data form link name.'. $e->getMessage());
             DB::rollback();
         }
     }

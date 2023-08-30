@@ -33,8 +33,6 @@ class ProcessSyncDataFormLinkName implements ShouldQueue
     {
         $this->formLinkName = $formLinkName;
         $this->zohoForm = $zohoForm;
-
-        $this->zohoLib  = ZohoPeopleIntegration::getInstance();
     }
 
     /**
@@ -44,6 +42,8 @@ class ProcessSyncDataFormLinkName implements ShouldQueue
      */
     public function handle()
     {
+        $this->zohoLib  = ZohoPeopleIntegration::getInstance();
+
         $index = 1;
         $offset = 200;
 

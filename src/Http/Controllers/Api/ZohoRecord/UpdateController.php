@@ -84,7 +84,7 @@ class UpdateController extends BaseController
                         if (isset($oldRows[$value['tabular.ROWID']])) {
                             unset($oldRows[$value['tabular.ROWID']]);
                         }
-                        $this->updateZohoRecordValue($zohoFormSections[$tabularName]->attributes->keyBy('field_label'), $zohoRecord, $value, $value['tabular.ROWID']);
+                        $this->updateZohoRecordValue($zohoFormSections[$tabularName]->attributes->keyBy('label_name'), $zohoRecord, $value, $value['tabular.ROWID']);
                     }
                 }
                 unset($responseDataRecord['tabularSections']);
@@ -96,7 +96,7 @@ class UpdateController extends BaseController
                 }
             }
 
-            $this->updateZohoRecordValue($zohoForm->attributes->keyBy('field_label'), $zohoRecord, $responseDataRecord);
+            $this->updateZohoRecordValue($zohoForm->attributes->keyBy('label_name'), $zohoRecord, $responseDataRecord);
 
             DB::commit();
         } catch (Exception $e) {

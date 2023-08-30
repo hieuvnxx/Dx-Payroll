@@ -8,7 +8,6 @@ use Dx\Payroll\Integrations\ZohoPeopleIntegration;
 use Dx\Payroll\Repositories\ZohoFormInterface;
 use Dx\Payroll\Repositories\ZohoRecordInterface;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\Log;
 
 class MigrateDataOrganizationFromZoho extends Command
 {
@@ -19,7 +18,7 @@ class MigrateDataOrganizationFromZoho extends Command
      *
      * @var string
      */
-    protected $description = 'Generate Contract Types Employee';
+    protected $description = 'migrate organization data from zoho to database';
 
     protected $zohoLib;
     protected $zohoForm;

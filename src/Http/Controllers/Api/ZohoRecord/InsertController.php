@@ -63,13 +63,13 @@ class InsertController extends BaseController
                     if (!isset($zohoFormSections[$tabularName]) || empty($values[0])) continue;
 
                     foreach ($values as $value) {
-                        $this->insertZohoRecordValue($zohoFormSections[$tabularName]->attributes->keyBy('field_label'), $zohoRecord, $value, $value['tabular.ROWID']);
+                        $this->insertZohoRecordValue($zohoFormSections[$tabularName]->attributes->keyBy('label_name'), $zohoRecord, $value, $value['tabular.ROWID']);
                     }
                 }
                 unset($responseDataRecord['tabularSections']);
             }
 
-            $this->insertZohoRecordValue($zohoForm->attributes->keyBy('field_label'), $zohoRecord, $responseDataRecord);
+            $this->insertZohoRecordValue($zohoForm->attributes->keyBy('label_name'), $zohoRecord, $responseDataRecord);
 
             DB::commit();
         } catch (Exception $e) {

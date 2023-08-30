@@ -44,23 +44,25 @@ class MigrateZohoForm extends Command
             return $this->info('Error get form components!');
         }
 
+        ZohoForm::truncate();
+        ZohoSection::truncate();
+        ZohoRecordField::truncate();
+
+        DB::beginTransaction();
         try {
-            DB::beginTransaction();
-
-            ZohoForm::query()->delete();
-            ZohoSection::query()->delete();
-            ZohoRecordField::query()->delete();
-
             $insertZohoRecordFields = [];
             foreach ($arrForm['response']['result'] as $form) {
-                $formCreate = ZohoForm::create([
-                    'zoho_id' => $form['componentId'],
-                    'form_name' => $form['displayName'],
-                    'form_link_name' => $form['formLinkName'],
-                    'status' => $form["isVisible"] ? 1 : 0
-                ]);
-                
                 $this->info(now()->toDateTimeString() . " Process Form Name: " . $form['formLinkName']);
+
+                $formCreate = ZohoForm::create([
+                    'component_id' => $form['componentId'],
+                    'display_name' => $form['displayName'],
+                    'form_link_name' => $form['formLinkName'],
+                    'is_custom' => $form['iscustom'],
+                    'is_visible' => $form['isVisible'],
+                    'view_id' => $form['viewDetails']['view_Id'],
+                    'view_name' => $form['viewDetails']['view_Name'],
+                ]);
 
                 $arrComp = $this->zohoLib->getSectionForm($form['formLinkName'], 2, false);
                 if (!isset($arrComp['response']['result']) || empty($arrComp['response']['result'])) {
@@ -83,12 +85,12 @@ class MigrateZohoForm extends Command
                                         $insertZohoRecordFields[] = [
                                             'form_id' => $formCreate->id,
                                             'section_id' => $sectionCreate->id,
-                                            'field_name' => $sectionField['displayname'],
-                                            'field_label' => $sectionField['labelname'],
-                                            'type' => $sectionField['comptype'],
+                                            'display_name' => $sectionField['displayname'],
+                                            'label_name' => $sectionField['labelname'],
+                                            'comp_type' => $sectionField['comptype'],
                                             'autofillvalue' => $sectionField['autofillvalue'],
-                                            'ismandatory' => $sectionField['ismandatory'],
-                                            'options' => isset($data['Options']) && $data['comptype'] == "Picklist" ? json_encode($data['Options'], JSON_UNESCAPED_SLASHES) : null,
+                                            'is_mandatory' => $sectionField['ismandatory'],
+                                            'options' => null,
                                             'decimal_length' => $sectionField['decimalLength'] ?? null,
                                             'max_length' => $sectionField['maxLength'] ?? null,
                                         ];
@@ -102,12 +104,12 @@ class MigrateZohoForm extends Command
                     $insertZohoRecordFields[] = [
                         'form_id' => $formCreate->id,
                         'section_id' => 0,
-                        'field_name' => $data['displayname'],
-                        'field_label' => $data['labelname'],
-                        'type' => $data['comptype'],
+                        'display_name' => $data['displayname'],
+                        'label_name' => $data['labelname'],
+                        'comp_type' => $data['comptype'],
                         'autofillvalue' => $data['autofillvalue'],
-                        'ismandatory' => $data['ismandatory'],
-                        'options' => isset($data['Options']) && $data['comptype'] == "Picklist" ? json_encode($data['Options'], JSON_UNESCAPED_SLASHES) : null,
+                        'is_mandatory' => $data['ismandatory'],
+                        'options' => null,
                         'decimal_length' => $data['decimalLength'] ?? null,
                         'max_length' => $data['maxLength'] ?? null,
                     ];

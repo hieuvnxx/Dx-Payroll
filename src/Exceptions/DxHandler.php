@@ -57,13 +57,5 @@ class DxHandler extends ExceptionHandler
                 ], 404);
             }
         });
-
-        $this->renderable(function (\Predis\Connection\ConnectionException $e, Request $request) {
-            if ($request->is('api/*')) {
-                return response()->json([
-                    'message' => 'Error Occurred Server',
-                ], 404);
-            }
-        });
     }
 }

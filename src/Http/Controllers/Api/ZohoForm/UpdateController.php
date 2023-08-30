@@ -73,12 +73,12 @@ class UpdateController extends BaseController
                                         'form_id' => $zohoForm->id,
                                         'section_id' => $section->id,
                                         'field_name' => $sectionField['displayname'],
-                                        'field_label' => $sectionField['labelname'],
+                                        'label_name' => $sectionField['labelname'],
                                         'type' => $sectionField['comptype'],
                                     ], [
                                             'form_id' => $zohoForm->id,
                                             'section_id' => $section->id,
-                                            'field_label' => $sectionField['labelname'],
+                                            'label_name' => $sectionField['labelname'],
                                     ]);
                                 }
                             }
@@ -91,12 +91,12 @@ class UpdateController extends BaseController
                     'form_id' => $zohoForm->id,
                     'section_id' => 0,
                     'field_name' => $data['displayname'],
-                    'field_label' => $data['labelname'],
+                    'label_name' => $data['labelname'],
                     'type' => $data['comptype'],
                 ], [
                     'form_id' => $zohoForm->id,
                     'section_id' => 0,
-                    'field_label' => $data['labelname'],
+                    'label_name' => $data['labelname'],
                 ]);
             }
             DB::commit();

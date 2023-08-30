@@ -51,6 +51,7 @@ Dx SmartOSC Payroll Package is accessible, powerful, and provides library for sp
   section label:Income_Tax_Rate1 => name:Quy định tính thuế TNCN
   section label:bonus_policy => name:Quy định thưởng
 
+  php artisan dxpayroll:migrateMasterDataFormSectionFieldZoho
   php artisan dxpayroll:migrateDataDateDimensionTable
   php artisan dxpayroll:migrateDataOrganizationFromZoho
   php artisan dxpayroll:migrateDataPayrollModuleFromZoho

@@ -14,12 +14,14 @@ use Dx\Payroll\Repositories\ZohoFormInterface;
 use Dx\Payroll\Repositories\ZohoRecordInterface;
 use Dx\Payroll\Repositories\ZohoRecordValueInterface;
 use Illuminate\Support\Env;
+use Illuminate\Support\Facades\DB;
 
 /**
  * insert database zoho form
  */
 class MonthlyWorkingTimeController extends PayrollController
 {
+    protected $dxPayrollConfig;
     protected $zohoLib;
     protected $zohoForm;
     protected $zohoRecord;
@@ -32,6 +34,7 @@ class MonthlyWorkingTimeController extends PayrollController
         $this->zohoForm = $zohoForm;
         $this->zohoRecord = $zohoRecord;
         $this->zohoRecordValue = $zohoRecordValue;
+        $this->dxPayrollConfig = config('dx_payroll');
     }
 
     public function processAll(ApiWorkingTimeAll $request)
@@ -71,6 +74,7 @@ class MonthlyWorkingTimeController extends PayrollController
      */
     public function processByCode(ApiWorkingTimeByCode $request)
     {
+        $monthlyPayrollModuleConfigDynamic = $this->dxPayrollConfig['monthly_working_time'];
         $employeeFormLinkName       = Env::get('EMPLOYEE_FORM_LINK_NAME');
         $employeeIdNumberFieldLabel = Env::get('EMPLOYEE_FORM_ID_NUMBER_FIELD_LABEL');
         $constantConfigFormLinkName = Env::get('PAYROLL_CONSTANT_CONFIGURATION_FORM_LINK_NAME');
@@ -96,7 +100,12 @@ class MonthlyWorkingTimeController extends PayrollController
         list($fromSalary, $toSalary) = payroll_range_date($month, $constantConfig['from_date'], $constantConfig['to_date']);
 
         // get employee informations by code
-        $employee = $this->zohoRecord->getRecords($employeeFormLinkName, 0, 200, [$employeeIdNumberFieldLabel => $empCode])[0];
+        $employee = $this->zohoRecord->getRecords($employeeFormLinkName, 0, 1, [
+            $employeeIdNumberFieldLabel => [
+                'searchText' => $empCode,
+                'searchOperator' => 'Is'
+            ]
+        ])[0];
 
         // fetch all punch in - out
         /*
@@ -109,7 +118,7 @@ class MonthlyWorkingTimeController extends PayrollController
         * pending get data from database
         */
         $dataShiftConfig = $this->zohoLib->getShiftConfigurationByEmployee($empCode, $fromSalary, $toSalary, $employeeDataPunch);
-
+        
         // get all leave
         /*
         * pending get data from database
@@ -117,59 +126,58 @@ class MonthlyWorkingTimeController extends PayrollController
         $leaves = $this->getLeaveWorking($empCode, $fromSalary, $toSalary);
 
         // fetch all overtime request range payslip
-        /*
-        * pending get data from database
-        */
         $overtimes = $this->getOverTime($empCode, $fromSalary, $toSalary);
 
-        // Kiểm tra xem đã tồn tại monthly working report chưa
+        // check exist record monthly
         $existMonthlyIds = [];
-        $monthlyWorkingTimeExistZoho = $this->zohoLib->getRecords($monthlyWorkingTimeFormLinkName, 0, 200, array(
-            [
-                'searchField' => 'employee',
-                'searchOperator' => 'Contains',
+        $monthlyWorkingTimeExistZoho = $this->zohoRecord->getRecords($monthlyWorkingTimeFormLinkName, 0, 200, [
+            'employee' => [
                 'searchText' => $empCode,
+                'searchOperator' => 'Contains'
             ],
+            'salary_period' => 
             [
-                'searchField' => 'salary_period',
-                'searchOperator' => 'Is',
                 'searchText' => $monthly,
-            ],
-        ));
+                'searchOperator' => 'Is',
+            ]
+        ]);
 
-        list($tabularData, $paidLeave, $holidayCount,
-        $standardWorkingTime, $standardWorkingDay, $standardWorkingDayProbation,
-        $overtimeSection) = $this->processUpdateData($dataShiftConfig, $constantConfig, $employee, $leaves, $overtimes, $formEav);
+        $monthlyDataCollect = $this->processUpdateData($dataShiftConfig, $constantConfig, $employee, $leaves, $overtimes, $formEav);
+        
+        $paidLeave = $monthlyDataCollect['paid_leave'];
+        $holidayCount = $monthlyDataCollect['holiday_count'];
+        $standardWorkingDay = $monthlyDataCollect['standard_working_day'];
+        $standardWorkingDayProbation = $monthlyDataCollect['standard_working_day_probation'];
+        $totalWorkingDays = sum_number([$standardWorkingDay, $standardWorkingDayProbation]);
+        $totalSalaryWorkingDay = sum_number([$totalWorkingDays, $holidayCount, $paidLeave]);
 
-        $totalWorkingDays = $standardWorkingDay + $standardWorkingDayProbation;
+        $inputData = [
+            $monthlyPayrollModuleConfigDynamic['code']                                  => $code,
+            $monthlyPayrollModuleConfigDynamic['employee']                              => $employee['Zoho_ID'],
+            $monthlyPayrollModuleConfigDynamic['salary_period']                         => $monthly,
+            $monthlyPayrollModuleConfigDynamic['standard_working_time']                 => $monthlyDataCollect['standard_working_time'],
+            $monthlyPayrollModuleConfigDynamic['overtime_meal_allowance']               => $monthlyDataCollect['meal_allowance'],
+            $monthlyPayrollModuleConfigDynamic['total_working_days']                    => $totalWorkingDays,
+            $monthlyPayrollModuleConfigDynamic['standard_working_day_probation']        => $standardWorkingDayProbation,
+            $monthlyPayrollModuleConfigDynamic['standard_working_day']                  => $standardWorkingDay,
+            $monthlyPayrollModuleConfigDynamic['holidays']                              => $holidayCount,
+            $monthlyPayrollModuleConfigDynamic['paid_leave']                            => $paidLeave,
+            $monthlyPayrollModuleConfigDynamic['total_salary_working_day']              => $totalSalaryWorkingDay,
+            $monthlyPayrollModuleConfigDynamic['weekday_hour']                          => $monthlyDataCollect['week_day_hour'],
+            $monthlyPayrollModuleConfigDynamic['weekend_hour']                          => $monthlyDataCollect['weekend_day_hour'],
+            $monthlyPayrollModuleConfigDynamic['holiday_hour']                          => $monthlyDataCollect['holiday_day_hour'],
+            $monthlyPayrollModuleConfigDynamic['weekday_night_hour']                    => $monthlyDataCollect['week_night_hour'],
+            $monthlyPayrollModuleConfigDynamic['weekend_night_hour']                    => $monthlyDataCollect['weekend_night_hour'],
+            $monthlyPayrollModuleConfigDynamic['holiday_night_hour']                    => $monthlyDataCollect['holiday_night_hour'],
+        ];
 
-        $inputData = [];
-        $inputData['employee'] = $employee['Zoho_ID'];
-        $inputData['salary_period'] = $monthly;
-        $inputData['code'] = $code;
-        $inputData['standard_working_time'] = $standardWorkingTime;
-        $inputData['standard_working_day'] = $standardWorkingDay;
-        $inputData['standard_working_day_probation'] = $standardWorkingDayProbation;
-        $inputData['total_working_days'] = $totalWorkingDays;
-        $inputData['holiday_count'] = $holidayCount;
-        $inputData['paid_leave'] = $paidLeave;
-        $inputData['total_salary_working_day'] = $totalWorkingDays + $holidayCount + $paidLeave;
-        $inputData['ot_meal_allowance'] = $overtimeSection['meal_allowance'];
-        $inputData['weekday1'] = $overtimeSection['week_day_hour'];
-        $inputData['week_night1'] = $overtimeSection['week_night_hour'];
-        $inputData['weekend1'] = $overtimeSection['weekend_day_hour'];
-        $inputData['weekend_night1'] = $overtimeSection['weekend_night_hour'];
-        $inputData['holiday_hour1'] = $overtimeSection['holiday_day_hour'];
-        $inputData['holiday_night1'] = $overtimeSection['holiday_night_hour'];
-        $inputData['holiday_night1'] = $overtimeSection['holiday_night_hour'];
-        $inputData['holiday_night1'] = $overtimeSection['holiday_night_hour'];
+        $tabularData = $monthlyDataCollect['tabular_data'];
 
         /* remove exist record in zoho if exist */
         if (!empty($monthlyWorkingTimeExistZoho[0])) {
             $existMonthlyIds = collect($monthlyWorkingTimeExistZoho)->map(function ($data) {
                 return $data['Zoho_ID'];
             })->toArray();
-
 
             $existToUpdateZohoId = array_shift($existMonthlyIds);
             if (!empty($existMonthlyIds)) {
@@ -271,21 +279,19 @@ class MonthlyWorkingTimeController extends PayrollController
     {
         $overtimeRequestFormLinkName = Env::get('PAYROLL_OT_REQUEST_FORM_LINK_NAME', null);
         $response = [];
-        /*
-        * Pending get data by database
-        */
-        $overtimeRequests = $this->zohoLib->getRecords($overtimeRequestFormLinkName, 0, 200, array(
-            [
-                'searchField' => 'AddedBy',
-                'searchOperator' => 'Contains',
+
+        $overtimeRequests = $this->zohoRecord->getRecords($overtimeRequestFormLinkName, 0, 200, [
+            'AddedBy' => [
                 'searchText' => $empCode,
+                'searchOperator' => 'Contains'
             ],
+            'date' => 
             [
-                'searchField' => 'date',
+                'searchText' => [date('Y-m-d', strtotime($startDate)), date('Y-m-d', strtotime($endDate))],
                 'searchOperator' => 'Between',
-                'searchText' => date('Y-m-d', strtotime($startDate)) . ";" . date('Y-m-d', strtotime($endDate)),
-            ],
-        ));
+            ]
+        ]);
+
         if (isset($overtimeRequests['errors']) && isset($overtimeRequests['errors']['code']) 
         && isset($overtimeRequests['status']) && $overtimeRequests['status'] != 0) return $response;
 
@@ -311,62 +317,69 @@ class MonthlyWorkingTimeController extends PayrollController
         $tabularAction = [];
 
         // All Working Time
-        $paidLeave = 0;
-        $holidayCount = 0;
-        $standardWorkingTime = 0;
-        $standardWorkingDay = 0;
-        $standardWorkingDayProbation = 0;
+        $paidLeave = $holidayCount = $standardWorkingTime = $standardWorkingDay = $standardWorkingDayProbation = 0;
 
         // OT Section
-        $otMealAllowance = 0;
+        $otMealAllowance = $weekdayHour = $weekNight = $weekendHour = $weekendNight = $holidayHour = $holidayNight = $holidayWithWeekendHour = $holidayWithWeekendNight = 0;
 
-        $weekdayHour = 0;
-        $weekNight = 0;
+        $constantShiftByEmployee = $this->getConstantShiftConfig($constantConfig, $employee[$this->dxPayrollConfig['employee']['shift']]);
 
-        $weekendHour = 0;
-        $weekendNight = 0;
+        $beginningDate = $employee[$this->dxPayrollConfig['employee']['beginning_date']] ?
+                        Carbon::createFromFormat('d-F-Y', $employee[$this->dxPayrollConfig['employee']['beginning_date']])->format('Y-m-d') : null;
 
-        $holidayHour = 0;
-        $holidayNight = 0;
-
-        $holidayWithWeekendHour = 0;
-        $holidayWithWeekendNight = 0;
-
-        $beginningDate = $employee['Beginning_Date'] ? Carbon::createFromFormat('d-F-Y', $employee['Beginning_Date'])->format('Y-m-d') : null;
-        if ($beginningDate) {
-            $beginningDate = Carbon::createFromFormat('Y-m-d', $beginningDate);
-        }
+        if ($beginningDate) $beginningDate = Carbon::createFromFormat('Y-m-d', $beginningDate);
 
         $arrayKeysDate = array_keys($dataShiftConfig);
-        $dateDimension = DateDimension::whereIn('date', $arrayKeysDate)->get()->keyBy('date')->toArray();
-        foreach ($dataShiftConfig as $date => $item) {
-            $workingHours = 0;
-            $leaveDays = 0;
-            $holidayDays = 0;
-            $isHoliday = false;
+        $dateDimension = DateDimension::whereIn('date', $arrayKeysDate)->get()->keyBy('date');
+        foreach ($dataShiftConfig as $date => $shiftConfig) {
+            $workingHours = $leaveDays = $holidayDays = 0;
 
-            $workingHours = date('H', strtotime($item['TotalHours'])) + date('i', strtotime($item['TotalHours'])) / 60;
-            $workingDays = total_standard_working_day_by_working_hour($workingHours, $constantConfig);
-            if (!isset($item['isWeekend']) && isset($dateDimension[$date]) && !$dateDimension[$date]['is_weekend']) {
-                // ngày công tiêu chuẩn
+            $isHoliday = $isWeekDay = $isWeekend = $isLongtermLeave = false;
+            $workingHours = date('H', strtotime($shiftConfig['TotalHours'])) + date('i', strtotime($shiftConfig['TotalHours'])) / 60;
+            $workingDays = total_standard_working_day_by_working_hour($workingHours, $constantShiftByEmployee['standard_working_hour'], $constantShiftByEmployee['standard_working_hour_halfday']);
+
+            if (str_contains(strtolower($shiftConfig['Status']), "holiday") || str_contains(strtolower($shiftConfig['Status']), "ngày lễ")) {
+                $isHoliday = true;
+                $workingDays = 0;
+            }
+
+            if (!str_contains(strtolower($shiftConfig['Status']), "maternity") && !str_contains(strtolower($shiftConfig['Status']), "thai sản")) {
+                $isLongtermLeave = true;
+            }
+            
+            //OT Ngày Lễ
+            if (!empty($overtimes[$date])) {
+                $otMealAllowance += $overtimes[$date]['allowance'];
+            }
+
+            if ($dateDimension->has($date) && !isset($shiftConfig['isWeekend']) && !$dateDimension[$date]->is_weekend) {
+                $isWeekDay = true;
+            } else {
+                $isWeekend = true;
+            }
+
+            if ($isWeekDay) {
                 $standardWorkingTime++;
-                if (str_contains(strtolower($item['Status']), "holiday") || str_contains(strtolower($item['Status']), "ngày lễ")) {
-                    // ngày lễ
+                if ($isHoliday) {
                     $holidayCount++;
-                    $workingDays = 0;
                     $holidayDays = 1;
-                    $isHoliday = true;
-                } else {
-                    if (!str_contains(strtolower($item['Status']), "maternity") && !str_contains(strtolower($item['Status']), "thai sản")) {
-                        if (!empty($leaves) && array_key_exists($date, $leaves)) {
-                            // ngày nghỉ phép
-                            $leaveDays = (float)$leaves[$date]['leave_day'];
-                            $totalDays = $leaveDays + $workingDays;
-                            if ($totalDays > 1) {
-                                $workingDays = 1 - $leaveDays;
-                            }
-                            $paidLeave += $leaveDays;
+
+                    //OT Ngày Lễ
+                    if (!empty($overtimes[$date])) {
+                        if ($overtimes[$date]['type'] == 'Ngày') {
+                            $holidayHour += $overtimes[$date]['hour'];
+                        } else {
+                            $holidayNight += $overtimes[$date]['hour'];
                         }
+                    }
+                } else {
+                    if($isLongtermLeave && !empty($leaves[$date])) {
+                        $leaveDays = (float)$leaves[$date]['leave_day'];
+                        $totalDays = $leaveDays + $workingDays;
+                        if ($totalDays > 1) {
+                            $workingDays = 1 - $leaveDays;
+                        }
+                        $paidLeave += $leaveDays;
                     }
 
                     $carbonDate = Carbon::createFromFormat('Y-m-d', $date);
@@ -377,55 +390,33 @@ class MonthlyWorkingTimeController extends PayrollController
                         //ngày thử việc
                         $standardWorkingDayProbation += $workingDays;
                     }
-                }
-            } else {
-                // Cuối tuần
-                $workingDays = 0;
-                $item['FirstIn'] = '-';
-                $item['LastOut'] = '-';
-                //Ngày lễ chủ nhật
-                if (str_contains(strtolower($item['Status']), "holiday") || str_contains(strtolower($item['Status']), "ngày lễ")) {
-                    $isHoliday = true;
+                    
+                    //OT ngày thường
+                    if (!empty($overtimes[$date])) {
+                        if ($overtimes[$date]['type'] == 'Ngày') {
+                            $weekdayHour += $overtimes[$date]['hour'];
+                        } else {
+                            $weekNight += $overtimes[$date]['hour'];
+                        }
+                    }
                 }
             }
 
-            if (!empty($overtimes)) {
-                foreach ($overtimes as $otDays => $overTime) {
-                    if ($otDays == $date) {
-                        if (!isset($item['isWeekend']) && isset($dateDimension[$date]) && !$dateDimension[$date]['is_weekend']) {
-                            //OT ngày thường
-                            if (!$isHoliday) {
-                                if ($overTime['type'] == 'Ngày') {
-                                    $weekdayHour += $overTime['hour'];
-                                } else {
-                                    $weekNight += $overTime['hour'];
-                                }
-                            } else {
-                                //OT Ngày Lễ
-                                if ($overTime['type'] == 'Ngày') {
-                                    $holidayHour += $overTime['hour'];
-                                } else {
-                                    $holidayNight += $overTime['hour'];
-                                }
-                            }
-                        } else {
-                            //OT cuối tuần
-                            if (!$isHoliday) {
-                                if ($overTime['type'] == 'Ngày') {
-                                    $weekendHour += $overTime['hour'];
-                                } else {
-                                    $weekendNight += $overTime['hour'];
-                                }
-                            } else {
-                                if ($overTime['type'] == 'Ngày') {
-                                    $holidayWithWeekendHour += $overTime['hour'];
-                                } else {
-                                    $holidayWithWeekendNight += $overTime['hour'];
-                                }
-                                //OT Ngày Lễ + Cuối Tuần
-                            }
-                        }
-                        $otMealAllowance += $overTime['allowance'];
+            if ($isWeekend && !empty($overtimes[$date])) {
+                if ($isHoliday) {
+                    //OT Ngày Lễ + Cuối Tuần
+                    if ($overtimes[$date]['type'] == 'Ngày') {
+                        $holidayWithWeekendHour += $overtimes[$date]['hour'];
+                    } else {
+                        $holidayWithWeekendNight += $overtimes[$date]['hour'];
+                    }
+                    
+                } else {
+                    //OT cuối tuần
+                    if ($overtimes[$date]['type'] == 'Ngày') {
+                        $weekendHour += $overtimes[$date]['hour'];
+                    } else {
+                        $weekendNight += $overtimes[$date]['hour'];
                     }
                 }
             }
@@ -433,20 +424,25 @@ class MonthlyWorkingTimeController extends PayrollController
             $sections = $formEav->sections;
             if (!$sections->isEmpty()) {
                 foreach ($sections as $section) {
-                    $item['append_by_logic_code_actual_Date'] = $date;
-                    $item['append_by_logic_code_actual_working_day'] = $workingDays;
-                    $item['append_by_logic_code_paid_leave1'] = $leaveDays;
-                    $item['append_by_logic_code_holiday'] = $holidayDays;
+                    $shiftConfig['append_by_logic_code_actual_Date'] = $date;
+                    $shiftConfig['append_by_logic_code_actual_working_day'] = $workingDays;
+                    $shiftConfig['append_by_logic_code_paid_leave1'] = $leaveDays;
+                    $shiftConfig['append_by_logic_code_holiday'] = $holidayDays;
                     $tabularRowAdd = [];
                     foreach ($section->attributes as $attribute) {
-                        $tabularRowAdd[$attribute->label_name] = $this->formatFieldValueTabularByDefault($attribute->label_name, $item);
+                        $tabularRowAdd[$attribute->label_name] = $this->formatFieldValueTabularByDefault($attribute->label_name, $shiftConfig);
                     }
                     $tabularAction[$section->section_id]['add'][] = $tabularRowAdd;
                 }
             }
         }
 
-        $overtimeSection = [
+        return [
+            'paid_leave' => $paidLeave,
+            'holiday_count' => $holidayCount,
+            'standard_working_time' => $standardWorkingTime,
+            'standard_working_day' => $standardWorkingDay,
+            'standard_working_day_probation' => $standardWorkingDayProbation,
             'meal_allowance' => $otMealAllowance,
             'week_day_hour' => $weekdayHour,
             'week_night_hour' => $weekNight,
@@ -456,10 +452,9 @@ class MonthlyWorkingTimeController extends PayrollController
             'holiday_night_hour' => $holidayNight,
             'holiday_with_weekend_day_hour' => $holidayWithWeekendHour,
             'holiday_with_weekend_night_hour' => $holidayWithWeekendNight,
-        ];
 
-        return [$tabularAction, $paidLeave, $holidayCount, $standardWorkingTime, $standardWorkingDay,
-         $standardWorkingDayProbation, $overtimeSection];
+            'tabular_data' => $tabularAction,
+        ];
     }
     
     /**
@@ -473,10 +468,10 @@ class MonthlyWorkingTimeController extends PayrollController
                 $value = $vars['append_by_logic_code_actual_Date'];
                 break;
             case 'Punch_in':
-                $value = $vars['FirstIn'] != '-' ? date('Y-m-d H:i:s', strtotime($vars['FirstIn'])) : '';
+                $value = ($vars['FirstIn'] != '-' && $vars['FirstIn']) ? date('Y-m-d H:i:s', strtotime($vars['FirstIn'])) : '';
                 break;
             case 'punch_out':
-                $value = $vars['LastOut'] != '-' ? date('Y-m-d H:i:s', strtotime($vars['LastOut'])) : '';
+                $value = ($vars['LastOut'] != '-' && $vars['LastOut']) ? date('Y-m-d H:i:s', strtotime($vars['LastOut'])) : '';
                 break;
             case 'actual_working_day':
                 $value = $vars['append_by_logic_code_actual_working_day'];
@@ -502,12 +497,33 @@ class MonthlyWorkingTimeController extends PayrollController
         if (!$sections->isEmpty()) {
             foreach ($sections as $section) {
                 $tabularExistInZoho = $existMonthlyData['tabularSections'][$section->section_name] ?? [];
-                if (!empty($tabularExistInZoho[0])) {
-                    foreach ($tabularExistInZoho as $value) {
-                        $tabularData[$section->section_id]['delete'][] = strval($value['tabular.ROWID']);
+                if (!empty($tabularExistInZoho)) {
+                    foreach ($tabularExistInZoho as $key => $value) {
+                        $tabularData[$section->section_id]['delete'][] = strval($key);
                     }
                 }
             }
         }
+    }
+
+    public function getConstantShiftConfig($constantConfig, $employeeType)
+    {
+        $tabularLabel = $this->dxPayrollConfig['constant_configuration']['tabularSections']['shift'];
+        $tabularName = $this->dxPayrollConfig['constant_configuration']['tabularNameSections']['shift'];
+        $tabularShiftConstantConfig = $constantConfig['tabularSections'][$tabularName];
+
+        foreach ($tabularShiftConstantConfig as $shift) {
+            if ($shift[$tabularLabel['shift_name']] == $employeeType) {
+                return [
+                    'shift' => $shift[$tabularLabel['shift_name']],
+                    'from_time' => $shift[$tabularLabel['from_time']],
+                    'to_time' => $shift[$tabularLabel['to_time']],
+                    'standard_working_hour' => $shift[$tabularLabel['standard_working_hour']],
+                    'standard_working_hour_halfday' => $shift[$tabularLabel['standard_working_hour_halfday']],
+                ];
+            }
+        }
+
+        return [];
     }
 }

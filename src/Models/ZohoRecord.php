@@ -20,8 +20,13 @@ class ZohoRecord extends Model
         'form_id',
     ];
 
-    public function values(){
-        return $this->hasMany(ZohoRecordValue::class,'record_id', 'id');
+    public function values()
+    {
+        return $this->hasMany(ZohoRecordValue::class, 'record_id', 'id');
     }
 
+    public function form()
+    {
+        return $this->belongsTo(ZohoForm::class, 'form_id', 'id');
+    }
 }

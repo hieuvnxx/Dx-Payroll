@@ -8,10 +8,8 @@
 function payroll_range_date($monthly, $formDate, $toDate)
 {
     ($formDate > $toDate) ? $num = 1 : $num = 0;
-
     $fromSalary = date('Y-m-d', strtotime($formDate . '-' . $monthly . " -" . $num . " months"));
     $toSalary = date('Y-m-d', strtotime($toDate . '-' . $monthly));
-
     return [$fromSalary, $toSalary];
 }
 
@@ -20,21 +18,17 @@ function payroll_range_date($monthly, $formDate, $toDate)
  * @param string $formLinkName
  * @return string
  */
-function total_standard_working_day_by_working_hour($hour, $rules)
+function total_standard_working_day_by_working_hour($hour, $fullDayHour, $halfDayHour)
 {
     $day = 0;
-    $fullDay = !empty($rules['standard_working_hour']) ? doubleval($rules['standard_working_hour']) : 0;
-    $halfDay = !empty($rules['standard_working_hour_haftday']) ? doubleval($rules['standard_working_hour_haftday']) : 0;
-    if ($halfDay == 0 || $fullDay == 0) {
+    if ($halfDayHour == 0 || $fullDayHour == 0) {
         return $day; 
     }
-
-    if ($hour >= $fullDay) {
+    if ($hour >= $fullDayHour) {
         $day = 1;
-    } elseif ($hour >= $halfDay) {
+    } elseif ($hour >= $halfDayHour) {
         $day = 0.5;
     }
-    
     return $day;
 }
 
@@ -45,14 +39,12 @@ function convert_decimal_length($number, $length = 2)
     return number_format($number,$length,'.','');
 }
 
-function sum_number(...$vars)
+function sum_number(...$numbers)
 {
     $sum = 0;
-
-    foreach($vars as $var) {
-        if (empty($var) || !is_numeric($var)) continue;
-        $sum += floatval($var);
+    foreach($numbers as $number) {
+        if (empty($number) || !is_numeric($number)) continue;
+        $sum += floatval($number);
     }
-
     return $sum;
 }

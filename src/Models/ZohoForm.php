@@ -38,11 +38,11 @@ class ZohoForm extends Model
 
     public function attributes() 
     {
-        return $this->hasMany(ZohoRecordField::class, 'form_id', 'id')->where('section_id', 0);
+        return $this->hasMany(ZohoRecordField::class, 'form_id', 'id')->where('section_id', 0)->where('deleted_at', null);
     }
 
     public function sectionAttributes() 
     {
-        return $this->hasMany(ZohoRecordField::class, 'form_id', 'id')->where('section_id', '!=', 0);
+        return $this->hasMany(ZohoRecordField::class, 'form_id', 'id')->where('section_id', '!=', 0)->where('deleted_at', null);
     }
 }

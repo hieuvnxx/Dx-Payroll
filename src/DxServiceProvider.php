@@ -20,6 +20,10 @@ class DxServiceProvider extends ServiceProvider
     {
         $this->loadCommands();
 
+        $this->publishes([
+            __DIR__.'/config/dx_payroll.php' => config_path('dx_payroll.php'),
+        ]);
+
         $this->app->singleton(ExceptionHandler::class,DxHandler::class);
         $this->app->bind(\Dx\Payroll\Repositories\ZohoFormInterface::class,\Dx\Payroll\Repositories\Eloquent\ZohoFormRepository::class);
         $this->app->bind(\Dx\Payroll\Repositories\ZohoRecordInterface::class,\Dx\Payroll\Repositories\Eloquent\ZohoRecordRepository::class);

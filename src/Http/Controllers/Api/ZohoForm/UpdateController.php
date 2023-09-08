@@ -52,7 +52,8 @@ class UpdateController extends BaseController
         if (!isset($arrComp['response']['result']) || empty($arrComp['response']['result'])) {
             return $this->sendError($request, 'Something error. getSectionForm ::: ', $arrComp);
         }
-
+        
+        $fieldDetails = [];
         try {
             DB::beginTransaction();
             foreach ($arrComp['response']['result'] as $data) {
@@ -69,17 +70,24 @@ class UpdateController extends BaseController
                                     ]);
 
                                 foreach ($dataSection as $sectionField) {
-                                    ZohoRecordField::updateOrCreate([
-                                        'form_id' => $zohoForm->id,
-                                        'section_id' => $section->id,
-                                        'field_name' => $sectionField['displayname'],
-                                        'label_name' => $sectionField['labelname'],
-                                        'type' => $sectionField['comptype'],
-                                    ], [
+                                    $responseUpdateOrCreate = ZohoRecordField::updateOrCreate([
                                             'form_id' => $zohoForm->id,
                                             'section_id' => $section->id,
                                             'label_name' => $sectionField['labelname'],
+                                    ], [
+                                        'form_id' => $zohoForm->id,
+                                        'section_id' => $section->id,
+                                        'display_name' => $sectionField['displayname'],
+                                        'label_name' => $sectionField['labelname'],
+                                        'comp_type' => $sectionField['comptype'],
+                                        'autofillvalue' => $sectionField['autofillvalue'],
+                                        'is_mandatory' => $sectionField['ismandatory'],
+                                        'options' => null,
+                                        'decimal_length' => $sectionField['decimalLength'] ?? null,
+                                        'max_length' => $sectionField['maxLength'] ?? null,
                                     ]);
+
+                                    $fieldDetails[] = $responseUpdateOrCreate->id;
                                 }
                             }
                         }
@@ -87,44 +95,34 @@ class UpdateController extends BaseController
                     continue;
                 }
 
-                ZohoRecordField::updateOrCreate([
+                $responseUpdateOrCreate = ZohoRecordField::updateOrCreate([
                     'form_id' => $zohoForm->id,
                     'section_id' => 0,
-                    'field_name' => $data['displayname'],
                     'label_name' => $data['labelname'],
-                    'type' => $data['comptype'],
                 ], [
                     'form_id' => $zohoForm->id,
                     'section_id' => 0,
+                    'display_name' => $data['displayname'],
                     'label_name' => $data['labelname'],
+                    'comp_type' => $data['comptype'],
+                    'autofillvalue' => $data['autofillvalue'],
+                    'is_mandatory' => $data['ismandatory'],
+                    'options' => null,
+                    'decimal_length' => $data['decimalLength'] ?? null,
+                    'max_length' => $data['maxLength'] ?? null,
                 ]);
+
+                $fieldDetails[] = $responseUpdateOrCreate->id;
             }
+
+            ZohoRecordField::where('form_id', $zohoForm->id)->whereNotIn('id', $fieldDetails)->delete();
+            
             DB::commit();
         } catch (Exception $e) {
             DB::rollback();
             return $this->sendError($request, 'Something error. Exception ::: ', $e->getMessage());
         }
 
-        return $this->sendResponse($request, 'Successfully.');
-    }
-
-    public function updateZohoRecordValue($attributes, $zohoRecord, $zohoData, $rowId = 0)
-    {
-        $arrayKeys = array_keys($zohoData);
-
-        foreach ($arrayKeys as $fieldLabel) {
-            if (isset($attributes[$fieldLabel])) {
-                if ($attributes[$fieldLabel]->type == "Lookup") {
-                    $value = $zohoData[$fieldLabel.'.ID'] ?? $zohoData[$fieldLabel.'.id'] ?? $zohoData[$fieldLabel];
-                } else {
-                    $value = $zohoData[$fieldLabel];
-                }
-
-                $this->zohoRecordValue->where('record_id', $zohoRecord->id)
-                ->where('field_id', $attributes[$fieldLabel]->id)
-                ->where('row_id', $rowId)
-                ->update(['value' => $value]);
-            }
-        }
+        return $this->sendResponse($request, 'Successfully.', $fieldDetails);
     }
 }

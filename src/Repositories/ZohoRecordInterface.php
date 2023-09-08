@@ -16,8 +16,4 @@ interface ZohoRecordInterface extends RepositoryInterface
     public function getRecords($formName, $offset = 0, $limit = 200, $params = []);
 
     public function getRecordByZohoID($formName, $ZohoID);
-
-    public function formatRecords($data);
-
-    public function castValue($type, $value);
 }

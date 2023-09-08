@@ -6,7 +6,6 @@ use Dx\Payroll\Models\ZohoRecord;
 use Prettus\Repository\Eloquent\BaseRepository;
 use Dx\Payroll\Repositories\ZohoFormInterface;
 use Dx\Payroll\Repositories\ZohoRecordInterface;
-use Illuminate\Support\Env;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -63,14 +62,27 @@ class ZohoRecordRepository extends BaseRepository implements ZohoRecordInterface
 
             foreach ($paramsById as $param) {
                 $response->whereHas('values', function ($query) use ($param) {
-                        $query->where('field_id', $param->id);
-                        $query->where('value', strval($param->value));
+                    $query->where('field_id', $param->id);
+                    switch ($param->value['searchOperator']) {
+                        case 'Contains':
+                            $query->where('value', 'like', '%' . strval($param->value['searchText']) . '%');
+                            break;
+                        case 'Between':
+                            if (isset($param->value['format']) && $param->value['format'] = 'datetime') {
+                                $query->whereBetween('date_time', $param->value['searchText']);
+                            } else {
+                                $query->whereBetween('date', $param->value['searchText']);
+                            }
+                            break;
+                        default :
+                            $query->where('value', strval($param->value['searchText']));
+                    }
                 });
             }
 
             $responseSearch = $response->skip($offset)->take($limit)->get();
             if ($responseSearch->isEmpty()) {
-                return  $this->formatRecords(collect([]));
+                return  $this->formatRecords(collect([]), $zohoForm);
             }
 
             $responseSearch = $responseSearch->keyBy('zoho_id')->keys()->toArray();
@@ -80,7 +92,7 @@ class ZohoRecordRepository extends BaseRepository implements ZohoRecordInterface
                     ->join('dx_zoho_sections', 'dx_zoho_sections.id', '=', 'dx_zoho_record_fields.section_id', 'left outer');
             }])->skip($offset)->take($limit)->get();
 
-            return  $this->formatRecords($response);
+            return  $this->formatRecords($response, $zohoForm);
         }
 
         $response = $this->where('dx_zoho_records.form_id', $zohoForm->id)->with(['values' => function ($query) {
@@ -88,7 +100,7 @@ class ZohoRecordRepository extends BaseRepository implements ZohoRecordInterface
                 ->join('dx_zoho_sections', 'dx_zoho_sections.id', '=', 'dx_zoho_record_fields.section_id', 'left outer');
         }])->skip($offset)->take($limit)->get();
 
-        return  $this->formatRecords($response);
+        return  $this->formatRecords($response, $zohoForm);
     }
 
     /**
@@ -108,7 +120,7 @@ class ZohoRecordRepository extends BaseRepository implements ZohoRecordInterface
                     ->join('dx_zoho_sections', 'dx_zoho_sections.id', '=', 'dx_zoho_record_fields.section_id', 'left outer');
             }])->first();
 
-        return $this->formatRecord($response);
+        return $this->formatRecord($response, $zohoForm);
     }
 
     /**
@@ -116,48 +128,57 @@ class ZohoRecordRepository extends BaseRepository implements ZohoRecordInterface
      * @param
      * @return mixed
      */
-    public function formatRecord($origin)
+    public function formatRecord($recordData, $formDetails)
     {
         $response = [];
 
-        if (is_null($origin)) return $response;
+        if (is_null($recordData)) return $response;
 
-        foreach ($origin->values as $val){
-            $response['Zoho_ID'] = $origin->zoho_id;
-            $response[$val->label_name] = $this->castValue($val->type, $val->value);
+        return $this->formatRecordToArray($recordData, $formDetails);;
+    }
+
+    /**
+     * format data of records
+     * @param
+     * @return mixed
+     */
+    public function formatRecords($recordDatas, $formDetails)
+    {
+        $response = [];
+        if (empty($recordDatas)) return $response;
+
+        foreach ($recordDatas as $recordData) {
+            $response[] = $this->formatRecordToArray($recordData, $formDetails);
+        }
+        
+        return $response;
+    }
+
+    private function formatRecordToArray($recordData, $formDetails)
+    {
+        $response['Zoho_ID'] = $recordData->zoho_id;
+
+        $formGeneralAttributes = $formDetails->attributes->keyBy('label_name');
+
+        foreach ($recordData->values as $val) {
             if (!empty($val->section_name)) {
-                $response['TabularSections'][$val->section_name][$val->row_id][$val->label_name] = $this->castValue($val->type, $val->value);
+                $response['tabularSections'][$val->section_name][$val->row_id][$val->label_name] = $this->castValue($val->comp_type, $val->value);
+                continue;
             }
+
+            $response[$val->label_name] = $this->castValue($val->comp_type, $val->value);
+
+            $formGeneralAttributes->forget($val->label_name);
+        }
+        
+        foreach ($formGeneralAttributes as $attribute) {
+            $response[$attribute->label_name] = $attribute->autofillvalue;
         }
 
         return $response;
     }
 
-    /**
-     * format data of records
-     * @param
-     * @return mixed
-     */
-    public function formatRecords($origin)
-    {
-        $response = [];
-        if (empty($origin)) return $response;
-
-        $index = 0;
-        foreach ($origin as $data){
-            foreach ($data->values as $val){
-                $response[$index]['Zoho_ID'] = $data->zoho_id;
-                $response[$index][$val->label_name] = $this->castValue($val->type, $val->value);
-                if (!empty($val->section_name)) {
-                    $response[$index]['TabularSections'][$val->section_name][$val->row_id][$val->label_name] = $this->castValue($val->type, $val->value);
-                }
-            }
-            $index++;
-        }
-        return $response;
-    }
-
-    public function castValue($type, $value)
+    private function castValue($type, $value)
     {
         switch ($type) {
             case $type == 'Number' :
@@ -169,6 +190,10 @@ class ZohoRecordRepository extends BaseRepository implements ZohoRecordInterface
     
     private function getFormByFormName($formName)
     {
-        return app(ZohoFormInterface::class)->where('form_link_name', $formName)->first();
+        return app(ZohoFormInterface::class)->where('form_link_name', $formName)
+        ->with(['attributes:id,label_name,autofillvalue,form_id,section_id'])
+        ->with(['sections'])
+        ->with(['sections.attributes:id,label_name,autofillvalue,form_id,section_id'])
+        ->first();
     }
 }

@@ -28,6 +28,7 @@ return new class extends Migration
             $table->longText('options')->nullable()->comment('additional for field type picklist, lookup');
             $table->tinyInteger('decimal_length')->nullable()->comment('additional for field type decimal');
             $table->integer('max_length')->nullable()->comment('additional for field type picklist, lookup');
+            $table->softDeletes();
         });
     }
 

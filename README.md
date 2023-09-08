@@ -17,6 +17,7 @@ Dx SmartOSC Payroll Package is accessible, powerful, and provides library for sp
 ```
 
 ```sh
+  php artisan vendor:publish --provider="Dx\Payroll\DxServiceProvider"
   php artisan migrate
   php artisan db:seed --class="Dx\Payroll\Database\Seeders\RefreshTokenSeeder"
   php artisan dxpayroll:migrateZohoForm

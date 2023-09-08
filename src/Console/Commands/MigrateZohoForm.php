@@ -82,18 +82,10 @@ class MigrateZohoForm extends Command
                                     ]);
 
                                     foreach ($dataSection as $sectionField){
-                                        $insertZohoRecordFields[] = [
-                                            'form_id' => $formCreate->id,
-                                            'section_id' => $sectionCreate->id,
-                                            'display_name' => $sectionField['displayname'],
-                                            'label_name' => $sectionField['labelname'],
-                                            'comp_type' => $sectionField['comptype'],
-                                            'autofillvalue' => $sectionField['autofillvalue'],
-                                            'is_mandatory' => $sectionField['ismandatory'],
-                                            'options' => null,
-                                            'decimal_length' => $sectionField['decimalLength'] ?? null,
-                                            'max_length' => $sectionField['maxLength'] ?? null,
-                                        ];
+                                        $insertZohoRecordFields[] = $this->generateInsertRecordField($sectionField, $formCreate->id, $sectionCreate->id);
+                                        if ($sectionField['comptype'] == 'Lookup') {
+                                            $insertZohoRecordFields[] = $this->generateInsertRecordField($sectionField, $formCreate->id, $sectionCreate->id, true);
+                                        }
                                     }
                                 }
                             }
@@ -101,19 +93,25 @@ class MigrateZohoForm extends Command
                         continue;
                     }
 
-                    $insertZohoRecordFields[] = [
-                        'form_id' => $formCreate->id,
-                        'section_id' => 0,
-                        'display_name' => $data['displayname'],
-                        'label_name' => $data['labelname'],
-                        'comp_type' => $data['comptype'],
-                        'autofillvalue' => $data['autofillvalue'],
-                        'is_mandatory' => $data['ismandatory'],
-                        'options' => null,
-                        'decimal_length' => $data['decimalLength'] ?? null,
-                        'max_length' => $data['maxLength'] ?? null,
-                    ];
+                    $insertZohoRecordFields[] = $this->generateInsertRecordField($data, $formCreate->id, 0);
+                    if ($data['comptype'] == 'Lookup') {
+                        $insertZohoRecordFields[] = $this->generateInsertRecordField($data, $formCreate->id, 0, true);
+                    }
                 }
+
+                //insert default approvalStatus field
+                $insertZohoRecordFields[] = [
+                    'form_id' => $formCreate->id,
+                    'section_id' => 0,
+                    'display_name' => 'ApprovalStatus',
+                    'label_name' => 'ApprovalStatus',
+                    'comp_type' => 'Text',
+                    'autofillvalue' => "Approval Not Enabled",
+                    'is_mandatory' => 0,
+                    'options' => null,
+                    'decimal_length' => null,
+                    'max_length' => null,
+                ];
             }
 
             //chunk to insert database
@@ -128,5 +126,36 @@ class MigrateZohoForm extends Command
             DB::rollback();
             return $this->error(now()->toDateTimeString() . " Error: dxpayroll:migrateZohoForm ::: Message : " . $e->getMessage(). " ::: Line : " . $e->getLine());
         }
+    }
+
+    private function generateInsertRecordField($fieldDetails, $formId, $sectionId, $autoGenerateLookupFieldId = false)
+    {
+        if ($autoGenerateLookupFieldId) {
+            return [
+                'form_id' => $formId,
+                'section_id' => $sectionId,
+                'display_name' => $fieldDetails['labelname']. '.ID',
+                'label_name' => $fieldDetails['labelname']. '.ID',
+                'comp_type' => $fieldDetails['comptype']. '.ID',
+                'autofillvalue' => '',
+                'is_mandatory' => false,
+                'options' => null,
+                'decimal_length' => null,
+                'max_length' => null,
+            ];
+        }
+
+        return [
+            'form_id' => $formId,
+            'section_id' => $sectionId,
+            'display_name' => $fieldDetails['displayname'],
+            'label_name' => $fieldDetails['labelname'],
+            'comp_type' => $fieldDetails['comptype'],
+            'autofillvalue' => $fieldDetails['autofillvalue'],
+            'is_mandatory' => $fieldDetails['ismandatory'],
+            'options' => null,
+            'decimal_length' => $fieldDetails['decimalLength'] ?? null,
+            'max_length' => $fieldDetails['maxLength'] ?? null,
+        ];
     }
 }

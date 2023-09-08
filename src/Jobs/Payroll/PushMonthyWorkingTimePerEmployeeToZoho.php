@@ -22,6 +22,7 @@ class PushMonthyWorkingTimePerEmployeeToZoho implements ShouldQueue
     private $employee;
     private $month;
 
+    private $dxPayrollConfig;
     private $zohoLib;
     private $zohoForm;
     private $zohoRecord;
@@ -54,15 +55,16 @@ class PushMonthyWorkingTimePerEmployeeToZoho implements ShouldQueue
         $this->zohoForm = $zohoForm;
         $this->zohoRecord = $zohoRecord;
         $this->zohoRecordValue = $zohoRecordValue;
+        $this->dxPayrollConfig = config('dx_payroll');
         $monthlyWorkingTimeApiController = app(MonthlyWorkingTimeController::class);
 
+        $monthlyPayrollModuleConfigDynamic = $this->dxPayrollConfig['monthly_working_time'];
         $employeeIdNumberFieldLabel = Env::get('EMPLOYEE_FORM_ID_NUMBER_FIELD_LABEL');
         $constantConfigFormLinkName = Env::get('PAYROLL_CONSTANT_CONFIGURATION_FORM_LINK_NAME');
         $monthlyWorkingTimeFormLinkName = Env::get('PAYROLL_MONTHY_WORKING_TIME_FORM_LINK_NAME');
 
         $employee = $this->employee;
         $month    = $this->month;
-
         $empCode = $employee[$employeeIdNumberFieldLabel];
         $monthly = str_replace('-', '/', $month);
         $code = $empCode . "-" . $monthly;
@@ -109,52 +111,54 @@ class PushMonthyWorkingTimePerEmployeeToZoho implements ShouldQueue
 
         // Kiểm tra xem đã tồn tại monthly working report chưa
         $existMonthlyIds = [];
-        $monthlyWorkingTimeExistZoho = $this->zohoLib->getRecords($monthlyWorkingTimeFormLinkName, 0, 200, array(
-            [
-                'searchField' => 'employee',
-                'searchOperator' => 'Contains',
+        $monthlyWorkingTimeExistZoho = $this->zohoRecord->getRecords($monthlyWorkingTimeFormLinkName, 0, 200, [
+            'employee' => [
                 'searchText' => $empCode,
+                'searchOperator' => 'Contains'
             ],
+            'salary_period' => 
             [
-                'searchField' => 'salary_period',
-                'searchOperator' => 'Is',
                 'searchText' => $monthly,
-            ],
-        ));
+                'searchOperator' => 'Is',
+            ]
+        ]);
 
-        list($tabularData, $paidLeave, $holidayCount,
-        $standardWorkingTime, $standardWorkingDay, $standardWorkingDayProbation,
-        $overtimeSection) = $monthlyWorkingTimeApiController->processUpdateData($dataShiftConfig, $constantConfig, $employee, $leaves, $overtimes, $formEav);
+        $monthlyDataCollect = $monthlyWorkingTimeApiController->processUpdateData($dataShiftConfig, $constantConfig, $employee, $leaves, $overtimes, $formEav);
 
-        $totalWorkingDays = $standardWorkingDay + $standardWorkingDayProbation;
+        $paidLeave = $monthlyDataCollect['paid_leave'];
+        $holidayCount = $monthlyDataCollect['holiday_count'];
+        $standardWorkingDay = $monthlyDataCollect['standard_working_day'];
+        $standardWorkingDayProbation = $monthlyDataCollect['standard_working_day_probation'];
+        $totalWorkingDays = sum_number([$standardWorkingDay, $standardWorkingDayProbation]);
+        $totalSalaryWorkingDay = sum_number([$totalWorkingDays, $holidayCount, $paidLeave]);
 
-        $inputData = [];
-        $inputData['employee'] = $employee['Zoho_ID'];
-        $inputData['salary_period'] = $monthly;
-        $inputData['code'] = $code;
-        $inputData['standard_working_time'] = $standardWorkingTime;
-        $inputData['standard_working_day'] = $standardWorkingDay;
-        $inputData['standard_working_day_probation'] = $standardWorkingDayProbation;
-        $inputData['total_working_days'] = $totalWorkingDays;
-        $inputData['holiday_count'] = $holidayCount;
-        $inputData['paid_leave'] = $paidLeave;
-        $inputData['total_salary_working_day'] = $totalWorkingDays + $holidayCount + $paidLeave;
-        $inputData['ot_meal_allowance'] = $overtimeSection['meal_allowance'];
-        $inputData['weekday1'] = $overtimeSection['week_day_hour'];
-        $inputData['week_night1'] = $overtimeSection['week_night_hour'];
-        $inputData['weekend1'] = $overtimeSection['weekend_day_hour'];
-        $inputData['weekend_night1'] = $overtimeSection['weekend_night_hour'];
-        $inputData['holiday_hour1'] = $overtimeSection['holiday_day_hour'];
-        $inputData['holiday_night1'] = $overtimeSection['holiday_night_hour'];
-        $inputData['holiday_night1'] = $overtimeSection['holiday_night_hour'];
-        $inputData['holiday_night1'] = $overtimeSection['holiday_night_hour'];
+        $inputData = [
+            $monthlyPayrollModuleConfigDynamic['code']                                  => $code,
+            $monthlyPayrollModuleConfigDynamic['employee']                              => $employee['Zoho_ID'],
+            $monthlyPayrollModuleConfigDynamic['salary_period']                         => $monthly,
+            $monthlyPayrollModuleConfigDynamic['standard_working_time']                 => $monthlyDataCollect['standard_working_time'],
+            $monthlyPayrollModuleConfigDynamic['overtime_meal_allowance']               => $monthlyDataCollect['meal_allowance'],
+            $monthlyPayrollModuleConfigDynamic['total_working_days']                    => $totalWorkingDays,
+            $monthlyPayrollModuleConfigDynamic['standard_working_day_probation']        => $standardWorkingDayProbation,
+            $monthlyPayrollModuleConfigDynamic['standard_working_day']                  => $standardWorkingDay,
+            $monthlyPayrollModuleConfigDynamic['holidays']                              => $holidayCount,
+            $monthlyPayrollModuleConfigDynamic['paid_leave']                            => $paidLeave,
+            $monthlyPayrollModuleConfigDynamic['total_salary_working_day']              => $totalSalaryWorkingDay,
+            $monthlyPayrollModuleConfigDynamic['weekday_hour']                          => $monthlyDataCollect['week_day_hour'],
+            $monthlyPayrollModuleConfigDynamic['weekend_hour']                          => $monthlyDataCollect['weekend_day_hour'],
+            $monthlyPayrollModuleConfigDynamic['holiday_hour']                          => $monthlyDataCollect['holiday_day_hour'],
+            $monthlyPayrollModuleConfigDynamic['weekday_night_hour']                    => $monthlyDataCollect['week_night_hour'],
+            $monthlyPayrollModuleConfigDynamic['weekend_night_hour']                    => $monthlyDataCollect['weekend_night_hour'],
+            $monthlyPayrollModuleConfigDynamic['holiday_night_hour']                    => $monthlyDataCollect['holiday_night_hour'],
+        ];
+
+        $tabularData = $monthlyDataCollect['tabular_data'];
 
         /* remove exist record in zoho if exist */
         if (!empty($monthlyWorkingTimeExistZoho[0])) {
             $existMonthlyIds = collect($monthlyWorkingTimeExistZoho)->map(function ($data) {
                 return $data['Zoho_ID'];
             })->toArray();
-
 
             $existToUpdateZohoId = array_shift($existMonthlyIds);
             if (!empty($existMonthlyIds)) {

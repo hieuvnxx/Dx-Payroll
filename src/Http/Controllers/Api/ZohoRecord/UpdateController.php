@@ -3,6 +3,8 @@
 
 namespace Dx\Payroll\Http\Controllers\Api\ZohoRecord;
 
+use Carbon\Carbon;
+use DateTime;
 use Dx\Payroll\Http\Requests\ApiInsertZohoRecord;
 use Dx\Payroll\Http\Controllers\Api\BaseController;
 use Dx\Payroll\Integrations\ZohoPeopleIntegration;
@@ -116,10 +118,12 @@ class UpdateController extends BaseController
 
         foreach ($arrayKeys as $fieldLabel) {
             if (isset($attributes[$fieldLabel])) {
-                if ($attributes[$fieldLabel]->type == "Lookup") {
-                    $value = $zohoData[$fieldLabel.'.ID'] ?? $zohoData[$fieldLabel.'.id'] ?? $zohoData[$fieldLabel];
-                } else {
-                    $value = $zohoData[$fieldLabel];
+                $dateFormat = null;
+                $dateTimeFormat = null;
+                if(($attributes[$fieldLabel]['comp_type'] == 'Datetime' || $attributes[$fieldLabel]['comp_type'] == 'Date') && !empty($zohoData[$fieldLabel])) {
+                    $dateTime = new DateTime($zohoData[$fieldLabel]);
+                    $dateFormat = Carbon::parse($dateTime)->format('Y-m-d');
+                    $dateTimeFormat = Carbon::parse($dateTime)->format('Y-m-d H:i:s');
                 }
 
                 $mactchs = [
@@ -128,7 +132,11 @@ class UpdateController extends BaseController
                     'row_id' => $rowId,
                 ];
 
-                $this->zohoRecordValue->updateOrCreate($mactchs, ['value' => $value]);
+                $this->zohoRecordValue->updateOrCreate($mactchs, [
+                        'value' => $zohoData[$fieldLabel],
+                        'date' => $dateFormat,
+                        'date_time' => $dateTimeFormat,
+                ]);
             }
         }
     }

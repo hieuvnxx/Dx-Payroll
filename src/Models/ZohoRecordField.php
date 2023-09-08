@@ -5,11 +5,11 @@ namespace Dx\Payroll\Models;
 use Dx\Payroll\DxServiceProvider;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Dx\Payroll\Models\ZohoFormLabel;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class ZohoRecordField extends Model
 {
-    use HasFactory;
+    use HasFactory, SoftDeletes;
 
     public $timestamps = false;
 

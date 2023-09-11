@@ -22,7 +22,7 @@ return new class extends Migration
             // $table->foreignId('field_id')->constrained(DxServiceProvider::DX_PREFIX_TABLE.'zoho_record_fields');
             $table->unsignedBigInteger('row_id')->nullable()->default(0);
             $table->text('value')->nullable();
-            $table->timestamp('date')->nullable();
+            $table->date('date')->nullable();
             $table->timestamp('date_time')->nullable();
         });
     }

@@ -44,13 +44,13 @@ class MigrateDataPayrollModuleFromZoho extends Command
         $this->zohoLib = ZohoPeopleIntegration::getInstance();
 
         $modulePayrollFormLinkNames = [
-            // 'PAYROLL_PAYSLIP_FORM_LINK_NAME' => Env::get('PAYROLL_PAYSLIP_FORM_LINK_NAME', null),
-            // 'PAYROLL_MONTHY_WORKING_TIME_FORM_LINK_NAME' => Env::get('PAYROLL_MONTHY_WORKING_TIME_FORM_LINK_NAME', null),
+            'PAYROLL_PAYSLIP_FORM_LINK_NAME' => Env::get('PAYROLL_PAYSLIP_FORM_LINK_NAME', null),
+            'PAYROLL_MONTHY_WORKING_TIME_FORM_LINK_NAME' => Env::get('PAYROLL_MONTHY_WORKING_TIME_FORM_LINK_NAME', null),
             'PAYROLL_OT_REQUEST_FORM_LINK_NAME' => Env::get('PAYROLL_OT_REQUEST_FORM_LINK_NAME', null),
-            // 'PAYROLL_CONSTANT_CONFIGURATION_FORM_LINK_NAME' => Env::get('PAYROLL_CONSTANT_CONFIGURATION_FORM_LINK_NAME', null),
-            // 'PAYROLL_SALARY_FACTOR_FORM_LINK_NAME' => Env::get('PAYROLL_SALARY_FACTOR_FORM_LINK_NAME', null),
-            // 'PAYROLL_FORMULA_SOURCE_FORM_LINK_NAME' => Env::get('PAYROLL_FORMULA_SOURCE_FORM_LINK_NAME', null),
-            // 'MASTER_DATA_SHIFT_FORM_LINK_NAME' => Env::get('MASTER_DATA_SHIFT_FORM_LINK_NAME', null),
+            'PAYROLL_CONSTANT_CONFIGURATION_FORM_LINK_NAME' => Env::get('PAYROLL_CONSTANT_CONFIGURATION_FORM_LINK_NAME', null),
+            'PAYROLL_SALARY_FACTOR_FORM_LINK_NAME' => Env::get('PAYROLL_SALARY_FACTOR_FORM_LINK_NAME', null),
+            'PAYROLL_FORMULA_SOURCE_FORM_LINK_NAME' => Env::get('PAYROLL_FORMULA_SOURCE_FORM_LINK_NAME', null),
+            'MASTER_DATA_SHIFT_FORM_LINK_NAME' => Env::get('MASTER_DATA_SHIFT_FORM_LINK_NAME', null),
         ];
 
         foreach ($modulePayrollFormLinkNames as $envKey => $formLinkName) {

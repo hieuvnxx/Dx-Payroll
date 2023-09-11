@@ -23,7 +23,7 @@ return new class extends Migration
             $table->unsignedBigInteger('row_id')->nullable()->default(0);
             $table->text('value')->nullable();
             $table->date('date')->nullable();
-            $table->timestamp('date_time')->nullable();
+            $table->dateTime('date_time')->nullable();
         });
     }
 

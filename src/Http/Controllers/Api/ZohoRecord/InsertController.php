@@ -12,6 +12,7 @@ use Dx\Payroll\Repositories\ZohoFormInterface;
 use Dx\Payroll\Repositories\ZohoRecordInterface;
 use Dx\Payroll\Repositories\ZohoRecordValueInterface;
 use Exception;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -51,6 +52,8 @@ class InsertController extends BaseController
 
         try {
             DB::beginTransaction();
+
+            Cache::forget($formLinkName);
 
             $zohoForm = $this->zohoForm->with(['sections', 'attributes', 'sections.attributes'])->where('form_link_name', $formLinkName)->first();
             if (is_null($zohoForm)) {

@@ -10,6 +10,7 @@ use Dx\Payroll\Repositories\ZohoRecordInterface;
 use Dx\Payroll\Repositories\ZohoRecordValueInterface;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Env;
+use Illuminate\Support\Facades\Cache;
 
 /**
  * insert database zoho form
@@ -18,20 +19,28 @@ class PayrollController extends BaseController
 {
     public function getAllDataFormLinkName($formLinkName, ZohoRecordInterface $zohoRecord)
     {
-        $response = new Collection();
+        if (Cache::has($formLinkName)) {
+            return Cache::get($formLinkName);
+        }
 
         $offset = 0;
         $limit  = 1000;
-        while (true) {
-            $datas = $zohoRecord->getRecords($formLinkName, $offset, $limit);
-            if (empty($datas)) {
-                break;
+        $response = Cache::rememberForever($formLinkName, function () use ($zohoRecord, $formLinkName, $offset, $limit) {
+            $response = new Collection();
+
+            while (true) {
+                $datas = $zohoRecord->getRecords($formLinkName, $offset, $limit);
+                if (empty($datas)) {
+                    break;
+                }
+    
+                $response = $response->merge(collect($datas));
+    
+                $offset += $limit;
             }
-
-            $response = $response->merge(collect($datas));
-
-            $offset += $limit;
-        }
+    
+            return $response->keyBy('Zoho_ID')->toArray();
+        });
 
         return $response;
     }

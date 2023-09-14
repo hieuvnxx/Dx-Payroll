@@ -25,6 +25,12 @@ class PayslipController extends PayrollController
     protected $zohoForm;
     protected $zohoRecord;
     protected $zohoRecordValue;
+
+    protected $masterDataForm;
+    protected $masterDataSection;
+    protected $masterDataField;
+    protected $salaryFactor;
+    protected $formulaSource;
     
     public function __construct(ZohoFormInterface $zohoForm, ZohoRecordInterface $zohoRecord, ZohoRecordValueInterface $zohoRecordValue)
     {
@@ -33,6 +39,18 @@ class PayslipController extends PayrollController
         $this->zohoForm = $zohoForm;
         $this->zohoRecord = $zohoRecord;
         $this->zohoRecordValue = $zohoRecordValue;
+
+        $formMasterDataFormLinkName = Env::get('MASTER_DATA_FORM_FORM_LINK_NAME');
+        $formMasterDataSectionLinkName = Env::get('MASTER_DATA_FORM_SECTION_LINK_NAME');
+        $formMasterDataFieldLinkName = Env::get('MASTER_DATA_FORM_FIELD_LINK_NAME');
+        $salaryFactorFormLinkName = Env::get('PAYROLL_SALARY_FACTOR_FORM_LINK_NAME');
+        $formulaSourceFormLinkName = Env::get('PAYROLL_FORMULA_SOURCE_FORM_LINK_NAME');
+
+        $this->masterDataForm = $this->getAllDataFormLinkName($formMasterDataFormLinkName, $this->zohoRecord);
+        $this->masterDataSection = $this->getAllDataFormLinkName($formMasterDataSectionLinkName, $this->zohoRecord);
+        $this->masterDataField = $this->getAllDataFormLinkName($formMasterDataFieldLinkName, $this->zohoRecord);
+        $this->salaryFactor = $this->getAllDataFormLinkName($salaryFactorFormLinkName, $this->zohoRecord);
+        $this->formulaSource = $this->getAllDataFormLinkName($formulaSourceFormLinkName, $this->zohoRecord);
     }
 
     /**
@@ -77,19 +95,13 @@ class PayslipController extends PayrollController
     {
         $employeeFormLinkName       = Env::get('EMPLOYEE_FORM_LINK_NAME');
         $employeeIdNumberFieldLabel = Env::get('EMPLOYEE_FORM_ID_NUMBER_FIELD_LABEL');
-        $formMasterDataFormLinkName = Env::get('PAYROLL_FORM_MASTER_DATA_FORM_LINK_NAME');
-        $salaryFactorFormLinkName = Env::get('PAYROLL_SALARY_FACTOR_FORM_LINK_NAME');
-        $formulaSourceFormLinkName = Env::get('PAYROLL_FORMULA_SOURCE_FORM_LINK_NAME');
+
         $payslipFormLinkName = Env::get('PAYROLL_PAYSLIP_FORM_LINK_NAME');
 
         $empCode = $request->code;
         $month   = $request->month;
         $monthly = str_replace('-', '/', $month);
         $code = $empCode . "-" . $monthly;
-
-        $masterDataFormCollect = $this->getAllDataFormLinkName($formMasterDataFormLinkName, $this->zohoRecord);
-        $salaryFactorCollect = $this->getAllDataFormLinkName($salaryFactorFormLinkName, $this->zohoRecord);
-        $formulaSourceCollect = $this->getAllDataFormLinkName($formulaSourceFormLinkName, $this->zohoRecord);
 
         $cacheDataForm = [];
         /** formEav*/
@@ -99,39 +111,45 @@ class PayslipController extends PayrollController
         }
 
         /** employee information */
-        $employeeData = $this->zohoRecord->getRecords($employeeFormLinkName, 0, 200, [$employeeIdNumberFieldLabel => $empCode])[0];
+        $employeeData = $this->zohoRecord->getRecords($employeeFormLinkName, 0, 200, [ 
+            $employeeIdNumberFieldLabel => [
+                'searchText' => $empCode,
+                'searchOperator' => 'Contains'
+            ]
+        ])[0];
         $cacheDataForm[$employeeFormLinkName] = $employeeData;
 
         /* assign value to key */
-        $keyWithVals = $salaryFactorCollect->reject(function ($factor) {
-            return $factor['type'] != 'Có sẵn trên hệ thống' || empty($factor['field_name']);
-        })->map( function($factor) use (&$cacheDataForm, $masterDataFormCollect, $employeeData) {
-            $masterDataFormZohoId = $factor['field_name'];
+        $keyWithVals = collect($this->salaryFactor)->reject(function ($factor) {
+            return $factor['type'] != 'Có sẵn trên hệ thống' || empty($factor['source']);
+        })->map( function($factor) use (&$cacheDataForm, $employeeData) {
+            $masterDataFieldZohoId = $factor['source.ID'];
             
-            $masterDataByFactor = $masterDataFormCollect->filter(function ($masterData) use ($masterDataFormZohoId) {
-                if ($masterData['Zoho_ID'] == $masterDataFormZohoId) {
-                    return $masterData;
-                }
-            })->values()->first();
-            
-            if (!empty($masterDataByFactor)) {
+            $masterDataFieldByFactor = $this->masterDataField[$masterDataFieldZohoId] ?? [];
+            if (!empty($masterDataFieldByFactor) && !empty($this->masterDataForm[$masterDataFieldByFactor['Belong_To_Form.ID']])) {
+                $formLinkNameByFactor = $this->masterDataForm[$masterDataFieldByFactor['Belong_To_Form.ID']]['Form_Link_Name'];
+                $fieldLabelNameByFactor = $masterDataFieldByFactor['Label_Name'];
+
                 $searchParams = [];
-                if ($factor['Condition'] == 'Theo nhân viên') {
-                    $searchParams = array_merge($searchParams, ['employee' => $employeeData['Zoho_ID']]);
-                }
-                return [ $factor['abbreviation'] => $this->replaceSystemDataToFactor($cacheDataForm, $masterDataByFactor['form_label'],
-                                                                                    $masterDataByFactor['label_name'], $searchParams)];
+                $searchParams = array_merge($searchParams, [
+                    'employee.ID' => [
+                        'searchText' => $employeeData['Zoho_ID'],
+                        'searchOperator' => 'Is'
+                    ]]);
+
+                return [ $factor['abbreviation'] => $this->replaceSystemDataToFactor($cacheDataForm, $formLinkNameByFactor,
+                                                                                    $fieldLabelNameByFactor, $searchParams)];
             }
         })->values()->collapse()->all();
 
         /* re-map fomula with value */
         $maths = ['+', '-', '*', '/', '(', ')'];
-        $fomulaVals = $salaryFactorCollect->reject(function ($factor) {
+        $fomulaVals = collect($this->salaryFactor)->reject(function ($factor) {
             return $factor['type'] != 'Tính theo công thức';
-        })->map( function($factor) use ($formulaSourceCollect, $maths, $keyWithVals) {
+        })->map( function($factor) use ($maths, $keyWithVals) {
             $factorZohoId = $factor['Zoho_ID'];
-            $formulaByFactor = $formulaSourceCollect->filter(function ($fomula) use ($factorZohoId) {
-                if ($fomula['field'] == $factorZohoId) {
+            $formulaByFactor = collect($this->formulaSource)->filter(function ($fomula) use ($factorZohoId) {
+                if ($fomula['field.ID'] == $factorZohoId) {
                     return $fomula;
                 }
             })->values()->first();
@@ -153,8 +171,14 @@ class PayslipController extends PayrollController
 
         /* check if exist record */
         $payslipExists = $this->zohoRecord->getRecords($payslipFormLinkName, 0, 1, [
-            'code' => $code,
-            'salary_period'=> $monthly
+            'code' => [
+                'searchText' => $code,
+                'searchOperator' => 'Contains'
+            ],
+            'salary_period' => [
+                'searchText' => $monthly,
+                'searchOperator' => 'Is'
+            ],
         ]);
         $payslipExist = isset($payslipExists[0]) ? $payslipExists[0] : [];
 
@@ -229,31 +253,19 @@ class PayslipController extends PayrollController
 
     public function replaceSystemDataToFactor(&$cacheDataForm, $formLinkName, $fieldLabel, $searchParams = [], $zohoId = null)
     {
-        if (!empty($searchParams) && !empty($cacheDataForm[$formLinkName.$fieldLabel])) {
-            return $cacheDataForm[$formLinkName.$fieldLabel][$fieldLabel] ?? '';
-        } elseif(!empty($cacheDataForm[$formLinkName]) && empty($searchParams)) {
+        if(!empty($cacheDataForm[$formLinkName])) {
             return $cacheDataForm[$formLinkName][$fieldLabel] ?? '';
         }
 
         $val = null;
         if (is_null($zohoId)) {
             $formData = $this->zohoRecord->getRecords($formLinkName, 0, 200, $searchParams);
-            if (!empty($searchParams)) {
-                if (!empty($formData)) {
-                    $cacheDataForm[$formLinkName.$fieldLabel] = $formData[0];
-                    $val = $cacheDataForm[$formLinkName.$fieldLabel][$fieldLabel] ?? '';
-                } else {
-                    $cacheDataForm[$formLinkName.$fieldLabel] = $formData;
-                    $val = $cacheDataForm[$formLinkName.$fieldLabel][$fieldLabel] ?? '';
-                }
+            if (!empty($formData)) {
+                $cacheDataForm[$formLinkName] = $formData[0];
+                $val = $cacheDataForm[$formLinkName][$fieldLabel] ?? '';
             } else {
-                if (!empty($formData)) {
-                    $cacheDataForm[$formLinkName] = $formData[0];
-                    $val = $cacheDataForm[$formLinkName][$fieldLabel] ?? '';
-                } else {
-                    $cacheDataForm[$formLinkName] = $formData;
-                    $val = $cacheDataForm[$formLinkName][$fieldLabel] ?? '';
-                }
+                $cacheDataForm[$formLinkName] = $formData;
+                $val = $cacheDataForm[$formLinkName][$fieldLabel] ?? '';
             }
         } else {
             $formData = $this->zohoRecord->getRecordByZohoID($formLinkName, $zohoId);
@@ -304,7 +316,7 @@ class PayslipController extends PayrollController
         $fromSalary = Carbon::createFromFormat('Y-m-d', $fromSalary);
         $toSalary = Carbon::createFromFormat('Y-m-d', $toSalary);
         
-        $tabularBonusHolidays = $constantConfig['TabularSections']['Quy định thưởng'] ?? [];
+        $tabularBonusHolidays = $constantConfig['tabularSections']['Quy định thưởng'] ?? [];
         if (!empty($tabularBonusHolidays)) {
             foreach ($tabularBonusHolidays as $bonus) {
                 if (empty($bonus['date']) && $bonus['bonus_type'] == "Thưởng sinh nhật" && !empty($employeeData['Date_of_birth'])) {
@@ -331,8 +343,8 @@ class PayslipController extends PayrollController
             }
         }
 
-        if (!empty($employeeData['TabularSections']['Bonus & Others'])) {
-            foreach ($employeeData['TabularSections']['Bonus & Others'] as $bonus) {
+        if (!empty($employeeData['tabularSections']['Bonus & Others'])) {
+            foreach ($employeeData['tabularSections']['Bonus & Others'] as $bonus) {
      		    if (empty($bonus['Date'])) continue;
 
                 $day = Carbon::createFromFormat('d-F-Y', $bonus['Date'])->format('Y-m-d');
@@ -360,7 +372,7 @@ class PayslipController extends PayrollController
             }
         }
 
-        $tabularbasicSalaryAndAllowancePolicy = $constantConfig['TabularSections']['Chính sách lương cơ bản và trợ cấp'] ?? [];
+        $tabularbasicSalaryAndAllowancePolicy = $constantConfig['tabularSections']['Chính sách lương cơ bản và trợ cấp'] ?? [];
         foreach ($tabularbasicSalaryAndAllowancePolicy as $row) {
             if ($employeeData['Job_Level'] == $row['Level']) {
                 $constantVals['phu_cap_khac']['total'] = $row['other_allowance'];
@@ -375,7 +387,7 @@ class PayslipController extends PayrollController
         }
 
         if (!empty($payslipExist)) {
-            $basicSalaryTabular = $payslipExist['TabularSections']['Chi tiết lương cơ bản'];
+            $basicSalaryTabular = $payslipExist['tabularSections']['Chi tiết lương cơ bản'];
             if (!empty($basicSalaryTabular)) {
                 $firstBasicSalary = array_shift($basicSalaryTabular);
                 $constantVals['tong_hoan_thue_tncn']['total'] = convert_decimal_length($firstBasicSalary['total_refund_tax']);
@@ -383,7 +395,7 @@ class PayslipController extends PayrollController
                 $constantVals['hoan_bhxh']['total'] = convert_decimal_length($firstBasicSalary['si_reimbursement']);
             }
 
-            $kpiSalaryTabular = $payslipExist['TabularSections']['Chi tiết lương KPI'];
+            $kpiSalaryTabular = $payslipExist['tabularSections']['Chi tiết lương KPI'];
             if (!empty($kpiSalaryTabular)) {
                 $firstRowKpi = array_shift($kpiSalaryTabular);
                 $constantVals['truy_thu_thue_tncn']['total'] = convert_decimal_length($firstRowKpi['tax_arrears']);
@@ -466,7 +478,7 @@ class PayslipController extends PayrollController
             $action = 'add';
             $rowId  = null;
 
-            $tabularExist = $payslipExist['TabularSections'][$section->section_name] ?? [];
+            $tabularExist = $payslipExist['tabularSections'][$section->section_name] ?? [];
             if (!empty($tabularExist)) {
                 $rowId = array_key_first($tabularExist);
                 $action = 'update';
@@ -508,7 +520,7 @@ class PayslipController extends PayrollController
             }
         }
 
-        $tabularExist = $payslipExist['TabularSections'][$section->section_name] ?? [];
+        $tabularExist = $payslipExist['tabularSections'][$section->section_name] ?? [];
         if (!empty($tabularExist)) {
             foreach ($tabularExist as $key => $row) {
                 $tabularAction[$section->section_id]['delete'][] = strval($key);
@@ -545,7 +557,7 @@ class PayslipController extends PayrollController
             ];
         }
 
-        $tabularExist = $payslipExist['TabularSections'][$section->section_name] ?? [];
+        $tabularExist = $payslipExist['tabularSections'][$section->section_name] ?? [];
         if (!empty($tabularExist)) {
             foreach ($tabularExist as $key => $row) {
                 $tabularAction[$section->section_id]['delete'][] = strval($key);

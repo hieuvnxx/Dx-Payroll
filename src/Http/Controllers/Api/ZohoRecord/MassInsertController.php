@@ -10,6 +10,7 @@ use Dx\Payroll\Jobs\ProcessSyncDataFormLinkName;
 use Dx\Payroll\Repositories\ZohoFormInterface;
 use Dx\Payroll\Repositories\ZohoRecordInterface;
 use Dx\Payroll\Repositories\ZohoRecordValueInterface;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -45,6 +46,8 @@ class MassInsertController extends BaseController
         if (is_null($zohoForm)) {
             throw new \ErrorException('Not found '.$formLinkName.' in database');
         }
+
+        Cache::forget($formLinkName);
 
         ProcessSyncDataFormLinkName::dispatch($formLinkName, $zohoForm);
         

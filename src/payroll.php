@@ -24,9 +24,9 @@ function total_standard_working_day_by_working_hour($hour, $fullDayHour, $halfDa
     if ($halfDayHour == 0 || $fullDayHour == 0) {
         return $day; 
     }
-    if ($hour >= $fullDayHour) {
+    if (is_numeric($fullDayHour) && $hour >= $fullDayHour) {
         $day = 1;
-    } elseif ($hour >= $halfDayHour) {
+    } elseif (is_numeric($halfDayHour) && $hour >= $halfDayHour) {
         $day = 0.5;
     }
     return $day;

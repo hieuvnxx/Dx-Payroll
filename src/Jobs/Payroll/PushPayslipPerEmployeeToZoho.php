@@ -21,6 +21,8 @@ class PushPayslipPerEmployeeToZoho implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
+    public $timeout = 600;
+
     private $employee;
     private $month;
 

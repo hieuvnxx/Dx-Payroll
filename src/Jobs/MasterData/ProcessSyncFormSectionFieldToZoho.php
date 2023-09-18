@@ -16,6 +16,8 @@ class ProcessSyncFormSectionFieldToZoho implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
+    public $timeout = 600;
+
     protected $zohoLib;
 
     protected $zohoForm;

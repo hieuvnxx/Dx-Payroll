@@ -343,8 +343,9 @@ class MonthlyWorkingTimeController extends PayrollController
                 $workingDays = 0;
             }
 
-            if (!str_contains(strtolower($shiftConfig['Status']), "maternity") && !str_contains(strtolower($shiftConfig['Status']), "thai sản")) {
+            if (str_contains(strtolower($shiftConfig['Status']), "maternity") || str_contains(strtolower($shiftConfig['Status']), "thai sản")) {
                 $isLongtermLeave = true;
+                $workingDays = $leaveDays = 0;
             }
             
             //OT Ngày Lễ
@@ -373,7 +374,7 @@ class MonthlyWorkingTimeController extends PayrollController
                         }
                     }
                 } else {
-                    if($isLongtermLeave && !empty($leaves[$date])) {
+                    if(!$isLongtermLeave && !empty($leaves[$date])) {
                         $leaveDays = (float)$leaves[$date]['leave_day'];
                         $totalDays = $leaveDays + $workingDays;
                         if ($totalDays > 1) {

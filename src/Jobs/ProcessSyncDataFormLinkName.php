@@ -45,7 +45,7 @@ class ProcessSyncDataFormLinkName implements ShouldQueue
         $this->zohoLib  = ZohoPeopleIntegration::getInstance();
 
         $index = 1;
-        $offset = 200;
+        $offset = 50;
 
         while (true) {
             $responseZohoRecords         = $this->zohoLib->getRecords($this->formLinkName, $index, $offset);

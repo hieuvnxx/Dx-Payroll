@@ -18,6 +18,8 @@ class ProcessSyncBatchDataFormLinkName implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
+    public $timeout = 500;
+
     protected $zohoForm;
 
     protected $responseZohoRecords;

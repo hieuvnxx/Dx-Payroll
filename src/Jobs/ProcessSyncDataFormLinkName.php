@@ -14,6 +14,8 @@ class ProcessSyncDataFormLinkName implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
+    public $timeout = 500;
+
     protected $zohoLib;
 
     protected $zohoForm;
@@ -45,7 +47,7 @@ class ProcessSyncDataFormLinkName implements ShouldQueue
         $this->zohoLib  = ZohoPeopleIntegration::getInstance();
 
         $index = 1;
-        $offset = 50;
+        $offset = 100;
 
         while (true) {
             $responseZohoRecords         = $this->zohoLib->getRecords($this->formLinkName, $index, $offset);

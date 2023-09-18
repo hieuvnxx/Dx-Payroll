@@ -148,8 +148,8 @@ class MonthlyWorkingTimeController extends PayrollController
         $holidayCount = $monthlyDataCollect['holiday_count'];
         $standardWorkingDay = $monthlyDataCollect['standard_working_day'];
         $standardWorkingDayProbation = $monthlyDataCollect['standard_working_day_probation'];
-        $totalWorkingDays = sum_number([$standardWorkingDay, $standardWorkingDayProbation]);
-        $totalSalaryWorkingDay = sum_number([$totalWorkingDays, $holidayCount, $paidLeave]);
+        $totalWorkingDays = sum_number($standardWorkingDay, $standardWorkingDayProbation);
+        $totalSalaryWorkingDay = sum_number($totalWorkingDays, $holidayCount, $paidLeave);
 
         $inputData = [
             $monthlyPayrollModuleConfigDynamic['code']                                  => $code,

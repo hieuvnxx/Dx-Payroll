@@ -608,8 +608,7 @@ class PayslipController extends PayrollController
     public function totalSalaryTabular(&$tabularAction, $sectionId, $keyAction, $keyWithVals , $rowId = null)
     {
         $deductionType = [
-            'Bảo hiểm (BHXH, BHYT, BHTN)' => sum_number($keyWithVals['bhxh_nv'], $keyWithVals['bhyt_nv'], $keyWithVals['bhtn_nv'],
-                                                         $keyWithVals['bhxh_cong_ty'], $keyWithVals['bhyt_cong_ty'], $keyWithVals['bhtn_cong_ty']),
+            'Bảo hiểm (BHXH, BHYT, BHTN)' => sum_number($keyWithVals['bhxh_nv'], $keyWithVals['bhyt_nv'], $keyWithVals['bhtn_nv']),
             'Đoàn phí' => $keyWithVals['doan_phi_cong_doan'],
             'Truy thu khác' => $keyWithVals['truy_thu_khac'],
             'Thuế TNCN' => $keyWithVals['thue_tncn'],

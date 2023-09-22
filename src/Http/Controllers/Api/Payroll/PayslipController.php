@@ -183,6 +183,10 @@ class PayslipController extends PayrollController
         $payslipExist = isset($payslipExists[0]) ? $payslipExists[0] : [];
 
         list($constantConfig, $constantVals) = $this->mappingConstantVals($month, $employeeData, $payslipExist);
+
+        unset($keyWithVals['muc_luong_co_ban']);
+        unset($keyWithVals['thu_nhap_theo_kpi']);
+
         $this->mappingContantValueToFomulaValsAndKeyVals($constantVals, $fomulaVals, $keyWithVals);
         $this->sortFomulaSource($fomulaVals, $keyWithVals);
         $this->caculateFomula($fomulaVals, $keyWithVals, $constantConfig);
@@ -308,6 +312,12 @@ class PayslipController extends PayrollController
         $constantVals['hoan_bhxh']['total'] = 0;
         $constantVals['tam_ung']['total'] = 0;
 
+        // new muc luong co ban va kpi
+        $constantVals['muc_luong_co_ban']['total'] = 0;
+        $constantVals['muc_luong_co_ban']['detai'] = [];
+        $constantVals['thu_nhap_theo_kpi']['total'] = 0;
+        $constantVals['thu_nhap_theo_kpi']['detai'] = [];
+
         $constantConfigFormLinkName = Env::get('PAYROLL_CONSTANT_CONFIGURATION_FORM_LINK_NAME');
         $constantConfigs = $this->zohoRecord->getRecords($constantConfigFormLinkName);
         $constantConfig = $constantConfigs[0];
@@ -315,6 +325,27 @@ class PayslipController extends PayrollController
         list($fromSalary, $toSalary) = payroll_range_date($month, $constantConfig['from_date'], $constantConfig['to_date']);
         $fromSalary = Carbon::createFromFormat('Y-m-d', $fromSalary);
         $toSalary = Carbon::createFromFormat('Y-m-d', $toSalary);
+
+        $salaryHistoryEmployee = $employeeData['tabularSections']['Salary History'] ?? [];
+        if (!empty($salaryHistoryEmployee)) {
+            foreach ($salaryHistoryEmployee as $salary) {
+                if (empty($salary['From_Date'])) continue;
+
+                $day = Carbon::createFromFormat('d-F-Y', $employeeData['Date_of_birth']);
+                if ($day->gte($toSalary)) continue;
+                if ($salary['salary_type'] == 'Lương cơ bản') {
+                    $rate = $salary['Rate'] ? $salary['Rate'] : 0;
+                    $constantVals['muc_luong_co_ban']['total'] = $salary['Offer_Salary'] * $rate/100 ;
+                    $constantVals['muc_luong_co_ban']['detai'][0] = $salary;
+                }
+
+                if ($salary['salary_type'] == 'Lương KPI') {
+                    $rate = $salary['Rate'] ? $salary['Rate'] : 0;
+                    $constantVals['thu_nhap_theo_kpi']['total'] = $salary['Offer_Salary'] * $rate/100 ;
+                    $constantVals['thu_nhap_theo_kpi']['detai'][0] = $salary;
+                }
+            }
+        }
         
         $tabularBonusHolidays = $constantConfig['tabularSections']['Quy định thưởng'] ?? [];
         if (!empty($tabularBonusHolidays)) {
@@ -386,6 +417,8 @@ class PayslipController extends PayrollController
             }
         }
 
+        $bonusOther = [];
+
         if (!empty($payslipExist)) {
             $basicSalaryTabular = $payslipExist['tabularSections']['Chi tiết lương cơ bản'];
             if (!empty($basicSalaryTabular)) {
@@ -400,7 +433,33 @@ class PayslipController extends PayrollController
                 $firstRowKpi = array_shift($kpiSalaryTabular);
                 $constantVals['truy_thu_thue_tncn']['total'] = convert_decimal_length($firstRowKpi['tax_arrears']);
             }
+
+            $totalBonusTabular = $payslipExist['tabularSections']['Total Bonus/ Tổng thưởng'];
+            if (!empty($totalBonusTabular)) {
+                foreach ($totalBonusTabular as $bonusRow) {
+                    if ($bonusRow['bonus_type'] != 'Khác') {
+                        continue;
+                    }
+
+                    $bonusOther['bonus_type'] = 'Khác';
+                    $bonusOther['amount'] = $bonusRow['bonus_amount'];
+                    $bonusOther['amount_bonus_payslip'] = $bonusRow['bonus_amount'];
+                    $bonusOther['note'] = $bonusRow['Note'];
+                }
+                $constantVals['truy_thu_thue_tncn']['total'] = convert_decimal_length($firstRowKpi['tax_arrears']);
+            }
         }
+
+        if (empty($bonusOther)) {
+            $bonusOther['bonus_type'] = 'Khác';
+            $bonusOther['amount'] = 0;
+            $bonusOther['amount_bonus_payslip'] = 0;
+            $bonusOther['note'] = '';
+        }
+
+        $totalBonus = $constantVals['thuong_le']['total'];
+        $constantVals['thuong_le']['total'] = $totalBonus + $bonusOther['amount'];
+        $constantVals['thuong_le']['detai'][] = $bonusOther;
 
         return [$constantConfig, $constantVals];
     }
@@ -698,5 +757,10 @@ class PayslipController extends PayrollController
         } else {
             $tabularAction[$sectionId][$keyAction][] = $tabularRow;
         }
+    }
+
+    public function getBasicEmployeeSalary()
+    {
+
     }
 }

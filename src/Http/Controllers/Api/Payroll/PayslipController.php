@@ -157,6 +157,9 @@ class PayslipController extends PayrollController
 
         list($constantConfig, $constantVals) = $this->mappingConstantVals($month, $employeeData, $payslipExist);
 
+        unset($keyWithVals['muc_luong_co_ban']);
+        unset($keyWithVals['thu_nhap_theo_kpi']);
+
         /* re-map fomula with value */
         $maths = ['+', '-', '*', '/', '(', ')'];
         $fomulaVals = collect($this->salaryFactor)->reject(function ($factor) {
@@ -184,11 +187,7 @@ class PayslipController extends PayrollController
             return [ $factor['abbreviation'] => $fomulaString];
         })->values()->collapse()->all();
 
-        unset($keyWithVals['muc_luong_co_ban']);
-        unset($keyWithVals['thu_nhap_theo_kpi']);
-
         $this->mappingContantValueToFomulaValsAndKeyVals($constantVals, $fomulaVals, $keyWithVals);
-
         $this->sortFomulaSource($fomulaVals, $keyWithVals);
         $this->caculateFomula($fomulaVals, $keyWithVals, $constantConfig);
         

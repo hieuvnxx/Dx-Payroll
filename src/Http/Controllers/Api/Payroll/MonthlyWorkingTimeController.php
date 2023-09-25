@@ -281,7 +281,7 @@ class MonthlyWorkingTimeController extends PayrollController
         $response = [];
 
         $overtimeRequests = $this->zohoRecord->getRecords($overtimeRequestFormLinkName, 0, 200, [
-            'AddedBy' => [
+            'employee1' => [
                 'searchText' => $empCode,
                 'searchOperator' => 'Contains'
             ],

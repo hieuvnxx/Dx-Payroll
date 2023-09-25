@@ -142,6 +142,21 @@ class PayslipController extends PayrollController
             }
         })->values()->collapse()->all();
 
+        /* check if exist record */
+        $payslipExists = $this->zohoRecord->getRecords($payslipFormLinkName, 0, 1, [
+            'code' => [
+                'searchText' => $code,
+                'searchOperator' => 'Contains'
+            ],
+            'salary_period' => [
+                'searchText' => $monthly,
+                'searchOperator' => 'Is'
+            ],
+        ]);
+        $payslipExist = isset($payslipExists[0]) ? $payslipExists[0] : [];
+
+        list($constantConfig, $constantVals) = $this->mappingConstantVals($month, $employeeData, $payslipExist);
+
         /* re-map fomula with value */
         $maths = ['+', '-', '*', '/', '(', ')'];
         $fomulaVals = collect($this->salaryFactor)->reject(function ($factor) {
@@ -169,25 +184,11 @@ class PayslipController extends PayrollController
             return [ $factor['abbreviation'] => $fomulaString];
         })->values()->collapse()->all();
 
-        /* check if exist record */
-        $payslipExists = $this->zohoRecord->getRecords($payslipFormLinkName, 0, 1, [
-            'code' => [
-                'searchText' => $code,
-                'searchOperator' => 'Contains'
-            ],
-            'salary_period' => [
-                'searchText' => $monthly,
-                'searchOperator' => 'Is'
-            ],
-        ]);
-        $payslipExist = isset($payslipExists[0]) ? $payslipExists[0] : [];
-
-        list($constantConfig, $constantVals) = $this->mappingConstantVals($month, $employeeData, $payslipExist);
-
         unset($keyWithVals['muc_luong_co_ban']);
         unset($keyWithVals['thu_nhap_theo_kpi']);
 
         $this->mappingContantValueToFomulaValsAndKeyVals($constantVals, $fomulaVals, $keyWithVals);
+
         $this->sortFomulaSource($fomulaVals, $keyWithVals);
         $this->caculateFomula($fomulaVals, $keyWithVals, $constantConfig);
         

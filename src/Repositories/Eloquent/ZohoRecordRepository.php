@@ -160,6 +160,10 @@ class ZohoRecordRepository extends BaseRepository implements ZohoRecordInterface
 
         $formGeneralAttributes = $formDetails->attributes->keyBy('label_name');
 
+        foreach ($formDetails->sections as $section) {
+            $response['tabularSections'][$section->section_name] = [];
+        }
+
         foreach ($recordData->values as $val) {
             if (!empty($val->section_name)) {
                 $response['tabularSections'][$val->section_name][$val->row_id][$val->label_name] = $this->castValue($val->comp_type, $val->value);

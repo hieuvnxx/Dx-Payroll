@@ -144,8 +144,8 @@ class PayslipController extends PayrollController
 
         /* check if exist record */
         $payslipExists = $this->zohoRecord->getRecords($payslipFormLinkName, 0, 1, [
-            'code' => [
-                'searchText' => $code,
+            'employee1' => [
+                'searchText' => $empCode,
                 'searchOperator' => 'Contains'
             ],
             'salary_period' => [

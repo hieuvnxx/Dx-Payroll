@@ -15,6 +15,8 @@ use Dx\Payroll\Repositories\ZohoRecordInterface;
 use Dx\Payroll\Repositories\ZohoRecordValueInterface;
 use Illuminate\Support\Env;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+
 
 /**
  * insert database zoho form
@@ -185,6 +187,8 @@ class MonthlyWorkingTimeController extends PayrollController
                 return $data['Zoho_ID'];
             })->toArray();
 
+            Log::channel('dx')->info(self::class .' ::: exist id index ::: ' , $existMonthlyIds);
+
             if (count($existMonthlyIds) > 1) {
                 $existToUpdateZohoId = array_shift($existMonthlyIds);
                 if (!empty($existMonthlyIds)) {
@@ -205,7 +209,7 @@ class MonthlyWorkingTimeController extends PayrollController
 
             $rspUpdate = $this->zohoLib->updateRecord($monthlyWorkingTimeFormLinkName, $inputData, $tabularData, $existToUpdateZohoId, 'yyyy-MM-dd');
             if (!isset($rspUpdate['result']) || !isset($rspUpdate['result']['pkId'])) {
-                return $this->sendError($request, 'Something error. Can not update attendance detail to record monthy working time with id : '. $existToUpdateZohoId, [$inputData, $tabularData]);
+                return $this->sendError($request, 'Something error. Can not update attendance detail to record monthy working time with id : '. $existToUpdateZohoId, [$rspDeleteMonthlyWorkingTimeExistZoho, $inputData, $tabularData]);
             }
 
             return $this->sendResponse($request, 'Successfully.', [$rspDeleteMonthlyWorkingTimeExistZoho ?? [], $rspUpdate]);

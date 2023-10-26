@@ -189,17 +189,17 @@ class MonthlyWorkingTimeController extends PayrollController
 
             Log::channel('dx')->info(self::class .' ::: exist id index ::: ' , $existMonthlyIds);
 
+            $existToUpdateZohoId = array_shift($existMonthlyIds);
             if (count($existMonthlyIds) > 1) {
-                $existToUpdateZohoId = array_shift($existMonthlyIds);
                 if (!empty($existMonthlyIds)) {
                     $existMonthlyStringIds = implode(',', $existMonthlyIds);
                     $rspDeleteMonthlyWorkingTimeExistZoho = $this->zohoLib->deleteRecords($monthlyWorkingTimeFormLinkName, $existMonthlyStringIds);
                 }
+            }
 
-                foreach ($monthlyWorkingTimeExistZoho as $monthlyWorkingTime) {
-                    if ($monthlyWorkingTime['Zoho_ID'] == $existToUpdateZohoId) {
-                        $this->removeExistTabularZoho($tabularData, $monthlyWorkingTime, $formEav);
-                    }
+            foreach ($monthlyWorkingTimeExistZoho as $monthlyWorkingTime) {
+                if ($monthlyWorkingTime['Zoho_ID'] == $existToUpdateZohoId) {
+                    $this->removeExistTabularZoho($tabularData, $monthlyWorkingTime, $formEav);
                 }
             }
 

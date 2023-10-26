@@ -195,11 +195,11 @@ class MonthlyWorkingTimeController extends PayrollController
                     $existMonthlyStringIds = implode(',', $existMonthlyIds);
                     $rspDeleteMonthlyWorkingTimeExistZoho = $this->zohoLib->deleteRecords($monthlyWorkingTimeFormLinkName, $existMonthlyStringIds);
                 }
-            }
 
-            foreach ($monthlyWorkingTimeExistZoho as $monthlyWorkingTime) {
-                if ($monthlyWorkingTime['Zoho_ID'] == $existToUpdateZohoId) {
-                    $this->removeExistTabularZoho($tabularData, $monthlyWorkingTime, $formEav);
+                foreach ($monthlyWorkingTimeExistZoho as $monthlyWorkingTime) {
+                    if ($monthlyWorkingTime['Zoho_ID'] == $existToUpdateZohoId) {
+                        $this->removeExistTabularZoho($tabularData, $monthlyWorkingTime, $formEav);
+                    }
                 }
             }
 

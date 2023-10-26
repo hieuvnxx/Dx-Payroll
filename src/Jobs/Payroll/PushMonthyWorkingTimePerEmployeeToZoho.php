@@ -61,6 +61,7 @@ class PushMonthyWorkingTimePerEmployeeToZoho implements ShouldQueue
         $monthlyWorkingTimeApiController = app(MonthlyWorkingTimeController::class);
 
         $monthlyPayrollModuleConfigDynamic = $this->dxPayrollConfig['monthly_working_time'];
+        $employeeFormLinkName       = Env::get('EMPLOYEE_FORM_LINK_NAME');
         $employeeIdNumberFieldLabel = Env::get('EMPLOYEE_FORM_ID_NUMBER_FIELD_LABEL');
         $constantConfigFormLinkName = Env::get('PAYROLL_CONSTANT_CONFIGURATION_FORM_LINK_NAME');
         $monthlyWorkingTimeFormLinkName = Env::get('PAYROLL_MONTHY_WORKING_TIME_FORM_LINK_NAME');
@@ -70,6 +71,7 @@ class PushMonthyWorkingTimePerEmployeeToZoho implements ShouldQueue
         $empCode = $employee[$employeeIdNumberFieldLabel];
         $monthly = str_replace('-', '/', $month);
         $code = $empCode . "-" . $monthly;
+
 
         $formEav = $this->zohoForm->has('attributes', 'sections', 'sections.attributes')->with('attributes', 'sections', 'sections.attributes')->where('form_link_name', $monthlyWorkingTimeFormLinkName)->first();
         if (is_null($formEav)) {
@@ -87,6 +89,14 @@ class PushMonthyWorkingTimePerEmployeeToZoho implements ShouldQueue
 
         list($fromSalary, $toSalary) = payroll_range_date($month, $constantConfig['from_date'], $constantConfig['to_date']);
 
+        // get employee informations by code
+        $employee = $this->zohoRecord->getRecords($employeeFormLinkName, 0, 1, [
+            $employeeIdNumberFieldLabel => [
+                'searchText' => $empCode,
+                'searchOperator' => 'Is'
+            ]
+        ])[0];
+
         // fetch all punch in - out
         /*
         * pending get data from database
@@ -98,7 +108,7 @@ class PushMonthyWorkingTimePerEmployeeToZoho implements ShouldQueue
         * pending get data from database
         */
         $dataShiftConfig = $this->zohoLib->getShiftConfigurationByEmployee($empCode, $fromSalary, $toSalary, $employeeDataPunch);
-
+        
         // get all leave
         /*
         * pending get data from database
@@ -106,12 +116,9 @@ class PushMonthyWorkingTimePerEmployeeToZoho implements ShouldQueue
         $leaves = $monthlyWorkingTimeApiController->getLeaveWorking($empCode, $fromSalary, $toSalary);
 
         // fetch all overtime request range payslip
-        /*
-        * pending get data from database
-        */
         $overtimes = $monthlyWorkingTimeApiController->getOverTime($empCode, $fromSalary, $toSalary);
 
-        // Kiểm tra xem đã tồn tại monthly working report chưa
+        // check exist record monthly
         $existMonthlyIds = [];
         $monthlyWorkingTimeExistZoho = $this->zohoRecord->getRecords($monthlyWorkingTimeFormLinkName, 0, 200, [
             'employee' => [
@@ -126,13 +133,13 @@ class PushMonthyWorkingTimePerEmployeeToZoho implements ShouldQueue
         ]);
 
         $monthlyDataCollect = $monthlyWorkingTimeApiController->processUpdateData($dataShiftConfig, $constantConfig, $employee, $leaves, $overtimes, $formEav);
-
+        
         $paidLeave = $monthlyDataCollect['paid_leave'];
         $holidayCount = $monthlyDataCollect['holiday_count'];
         $standardWorkingDay = $monthlyDataCollect['standard_working_day'];
         $standardWorkingDayProbation = $monthlyDataCollect['standard_working_day_probation'];
-        $totalWorkingDays = sum_number([$standardWorkingDay, $standardWorkingDayProbation]);
-        $totalSalaryWorkingDay = sum_number([$totalWorkingDays, $holidayCount, $paidLeave]);
+        $totalWorkingDays = sum_number($standardWorkingDay, $standardWorkingDayProbation);
+        $totalSalaryWorkingDay = sum_number($totalWorkingDays, $holidayCount, $paidLeave);
 
         $inputData = [
             $monthlyPayrollModuleConfigDynamic['code']                                  => $code,
@@ -155,6 +162,7 @@ class PushMonthyWorkingTimePerEmployeeToZoho implements ShouldQueue
         ];
 
         $tabularData = $monthlyDataCollect['tabular_data'];
+
 
         /* remove exist record in zoho if exist */
         if (!empty($monthlyWorkingTimeExistZoho[0])) {
@@ -181,18 +189,16 @@ class PushMonthyWorkingTimePerEmployeeToZoho implements ShouldQueue
 
             $rspUpdate = $this->zohoLib->updateRecord($monthlyWorkingTimeFormLinkName, $inputData, $tabularData, $existToUpdateZohoId, 'yyyy-MM-dd');
             if (!isset($rspUpdate['result']) || !isset($rspUpdate['result']['pkId'])) {
-                Log::channel('dx')->info('Something error. Can not update attendance detail to record monthy working time with exist Zoho_ID:' . $existToUpdateZohoId);
-                throw new \ErrorException('Something error. Can not update attendance detail to record monthy working time with exist Zoho_ID: ' . $existToUpdateZohoId);
+                Log::channel('dx')->info('Something error. Can not generate attendance detail exist. empCode:' . $empCode . ' . Zoho_ID:' . $existToUpdateZohoId);
+                throw new \ErrorException('Something error. Can not generate attendance detail exist. empCode: ' . $empCode . ' . Zoho_ID:' . $existToUpdateZohoId);
             }
-
-            return;
         }
 
         if (empty($tabularData)) {
             Log::channel('dx')->info('Something error. Can not generate attendance detail. empCode:' . $empCode);
             throw new \ErrorException('Something error. Can not generate attendance detail. empCode: ' . $empCode);
         }
-        
+
         $rspInsert = $this->zohoLib->insertRecord($monthlyWorkingTimeFormLinkName, $inputData, 'yyyy-MM-dd');
         if (!isset($rspInsert['result']) || !isset($rspInsert['result']['pkId'])) {
             Log::channel('dx')->info('Something error. Can not insert new record monthy working time in to zoho. empCode:' . $empCode);
@@ -200,7 +206,7 @@ class PushMonthyWorkingTimePerEmployeeToZoho implements ShouldQueue
         }
 
         $zohoId = $rspInsert['result']['pkId'];
-
+            
         $rspUpdate = $this->zohoLib->updateRecord($monthlyWorkingTimeFormLinkName, $inputData, $tabularData, $zohoId, 'yyyy-MM-dd');
         if (!isset($rspUpdate['result']) || !isset($rspUpdate['result']['pkId'])) {
             Log::channel('dx')->info('Something error. Can not update attendance detail to record monthy working time with id :' . $zohoId);

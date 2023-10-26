@@ -48,7 +48,13 @@ class MonthlyWorkingTimeController extends PayrollController
         
         $arrEmpCode = [];
         while (true) {
-            $employees = $this->zohoRecord->getRecords($employeeFormLinkName, $offset, $limit, ['Employeestatus' => "Active"]);
+            $employees = $this->zohoRecord->getRecords($employeeFormLinkName, $offset, $limit, [
+                'Employeestatus' => [
+                    'searchText' => "Active",
+                    'searchOperator' => 'Is'
+                ],
+            ]);
+
             if (empty($employees)) {
                 break;
             }
